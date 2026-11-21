@@ -22,51 +22,19 @@ struct VGM {
   let clock: Int
   let title: String
   let artist: String
+  let game: String
   let events: [Event]
   let loop: Int?
   let duration: Int
 
   init(data: Data, filename: String) throws {
-    let source = try VGMInput.expand(data)
-    var reader = Reader(bytes: source, end: source.count)
-    guard try reader.u32(at: 0) == 0x206D6756 else { throw VGMError.invalid("missing header") }
-    let version = try reader.u32(at: 8)
-    guard (0x151...0x171).contains(version) else { throw VGMError.unsupported("version") }
-    let end = try reader.offset(at: 4, defaultValue: source.count)
-    let start = try reader.offset(at: 0x34, defaultValue: 0x40)
-    let gd3 = try reader.offset(at: 0x14, defaultValue: 0)
-    let loopOffset = try reader.offset(at: 0x1C, defaultValue: 0)
-    guard end <= source.count, start >= 0x4C, start < end,
-          gd3 == 0 || (gd3 >= start && gd3 < end) else {
-      throw VGMError.invalid("header offsets")
-    }
-    let masterClock = try reader.u32(at: 0x48)
-    guard (44_100...16_000_000).contains(masterClock) else {
-      throw VGMError.unsupported("requires one YM2608")
-    }
-    clock = masterClock
-
-    let chipOffsets = [0x0C, 0x10, 0x2C, 0x30, 0x38, 0x40, 0x44, 0x4C, 0x50, 0x54,
-      0x58, 0x5C, 0x60, 0x64, 0x68, 0x6C, 0x70, 0x74, 0x80, 0x84, 0x88, 0x8C,
-      0x90, 0x98, 0x9C, 0xA0, 0xA4, 0xA8, 0xAC, 0xB0, 0xB4, 0xB8,
-      0xC0, 0xC4, 0xC8, 0xCC, 0xD0, 0xD8, 0xDC, 0xE0]
-    let headerEnd = version >= 0x170 && start >= 0xC0
-      ? try reader.offset(at: 0xBC, defaultValue: start)
-      : start
-    guard headerEnd >= min(start, 0xC0), headerEnd <= start else {
-      throw VGMError.invalid("extra header offset")
-    }
-    for offset in chipOffsets where offset + 4 <= headerEnd {
-      if try reader.u32(at: offset) != 0 {
-        throw VGMError.unsupported("additional sound chip")
-      }
-    }
-    let tags = try Self.tags(reader: reader, start: gd3, end: end)
-    title = Self.tag(tags, english: 0, japanese: 1) ?? filename
-    artist = Self.tag(tags, english: 6, japanese: 7) ?? ""
-
-    reader.position = start
-    reader.end = gd3 == 0 ? end : gd3
+    let header = try VGMHeader(data: data, filename: filename)
+    clock = header.clock
+    title = header.metadata.title
+    artist = header.metadata.artist
+    game = header.metadata.game
+    let loopOffset = header.loop
+    var reader = header.commands
     var parsed: [Event] = []
     var samples = 0
     var loopIndex: Int?
@@ -121,6 +89,82 @@ struct VGM {
     duration = samples + (loopIndex == nil ? 0 : samples - loopSample)
   }
 
+}
+
+struct VGMMetadata {
+  let title: String
+  let artist: String
+  let game: String
+  let tags: [String]
+
+  init(filename: String, tags: [String]) {
+    self.tags = tags
+    title = Self.tag(tags, english: 0, japanese: 1) ?? filename
+    artist = Self.tag(tags, english: 6, japanese: 7) ?? ""
+    game = Self.tag(tags, english: 2, japanese: 3) ?? ""
+  }
+
+  static func read(_ url: URL) throws -> Self {
+    try VGMHeader(data: VGMInput.read(url), filename: url.lastPathComponent).metadata
+  }
+
+  private static func tag(_ tags: [String], english: Int, japanese: Int) -> String? {
+    [english, japanese].compactMap { index in
+      tags.indices.contains(index) && !tags[index].isEmpty ? tags[index] : nil
+    }.first
+  }
+}
+
+private struct VGMHeader {
+  let clock: Int
+  let loop: Int
+  let metadata: VGMMetadata
+  let commands: Reader
+
+  init(data: Data, filename: String) throws {
+    let source = try VGMInput.expand(data)
+    var reader = Reader(bytes: source, end: source.count)
+    guard try reader.u32(at: 0) == 0x206D6756 else { throw VGMError.invalid("missing header") }
+    let version = try reader.u32(at: 8)
+    guard (0x151...0x171).contains(version) else { throw VGMError.unsupported("version") }
+    let end = try reader.offset(at: 4, defaultValue: source.count)
+    let start = try reader.offset(at: 0x34, defaultValue: 0x40)
+    let gd3 = try reader.offset(at: 0x14, defaultValue: 0)
+    let loopOffset = try reader.offset(at: 0x1C, defaultValue: 0)
+    guard end <= source.count, start >= 0x4C, start < end,
+          gd3 == 0 || (gd3 >= start && gd3 < end) else {
+      throw VGMError.invalid("header offsets")
+    }
+    let masterClock = try reader.u32(at: 0x48)
+    guard (44_100...16_000_000).contains(masterClock) else {
+      throw VGMError.unsupported("requires one YM2608")
+    }
+
+    let chipOffsets = [0x0C, 0x10, 0x2C, 0x30, 0x38, 0x40, 0x44, 0x4C, 0x50, 0x54,
+                       0x58, 0x5C, 0x60, 0x64, 0x68, 0x6C, 0x70, 0x74, 0x80, 0x84, 0x88, 0x8C,
+                       0x90, 0x98, 0x9C, 0xA0, 0xA4, 0xA8, 0xAC, 0xB0, 0xB4, 0xB8,
+                       0xC0, 0xC4, 0xC8, 0xCC, 0xD0, 0xD8, 0xDC, 0xE0]
+    let headerEnd = version >= 0x170 && start >= 0xC0
+      ? try reader.offset(at: 0xBC, defaultValue: start)
+      : start
+    guard headerEnd >= min(start, 0xC0), headerEnd <= start else {
+      throw VGMError.invalid("extra header offset")
+    }
+    for offset in chipOffsets where offset + 4 <= headerEnd {
+      if try reader.u32(at: offset) != 0 {
+        throw VGMError.unsupported("additional sound chip")
+      }
+    }
+    let tags = try Self.tags(reader: reader, start: gd3, end: end)
+    metadata = VGMMetadata(filename: filename, tags: tags)
+    clock = masterClock
+    loop = loopOffset
+    reader.position = start
+    reader.end = gd3 == 0 ? end : gd3
+    commands = reader
+
+  }
+
   private static func tags(reader: Reader, start: Int, end: Int) throws -> [String] {
     guard start > 0 else { return [] }
     guard end - start >= 12, try reader.u32(at: start) == 0x20336447 else {
@@ -133,12 +177,6 @@ struct VGM {
     let payload = reader.bytes[(start + 12)..<(start + 12 + size)]
     let text = String(data: Data(payload), encoding: .utf16LittleEndian) ?? ""
     return text.components(separatedBy: "\u{0}")
-  }
-
-  private static func tag(_ tags: [String], english: Int, japanese: Int) -> String? {
-    [english, japanese].compactMap { index in
-      tags.indices.contains(index) && !tags[index].isEmpty ? tags[index] : nil
-    }.first
   }
 }
 

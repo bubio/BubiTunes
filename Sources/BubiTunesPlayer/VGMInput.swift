@@ -4,6 +4,15 @@ import Foundation
 enum VGMInput {
   static let maximumBytes = 16 * 1024 * 1024
 
+  static func read(_ url: URL) throws -> Data {
+    guard try url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true else {
+      throw VGMError.invalid("expected a regular file")
+    }
+    let file = try FileHandle(forReadingFrom: url)
+    defer { try? file.close() }
+    return try file.read(upToCount: maximumBytes + 1) ?? Data()
+  }
+
   static func expand(_ input: Data) throws -> [UInt8] {
     guard input.count <= maximumBytes else { throw VGMError.invalid("file exceeds 16 MiB") }
     guard input.prefix(2).elementsEqual([0x1F, 0x8B]) else { return Array(input) }

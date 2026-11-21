@@ -5,12 +5,20 @@ import Foundation
 import Synchronization
 
 final class Terminal {
+  enum Key {
+    case byte(UInt8)
+    case up, down, left, right, escape, backTab
+  }
+
   private var saved = termios()
   private let interrupted = Mutex(false)
   private var signals: [DispatchSourceSignal] = []
   private var previousHandlers: [(Int32, sig_t?)] = []
   private var pending: [UInt8] = []
   private var active = false
+  private var lastRows: [String] = []
+  let color = ProcessInfo.processInfo.environment["NO_COLOR"] == nil &&
+    ProcessInfo.processInfo.environment["TERM"] != "dumb"
 
   init() throws {
     guard isatty(STDIN_FILENO) == 1, isatty(STDOUT_FILENO) == 1 else {
@@ -52,36 +60,63 @@ final class Terminal {
 
   var shouldQuit: Bool { interrupted.withLock { $0 } }
 
-  var rows: Int {
+  var viewport: (columns: Int, rows: Int) {
     var size = winsize()
-    guard ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0, size.ws_row > 0 else { return 24 }
-    return Int(size.ws_row)
+    guard ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 else { return (80, 24) }
+    return (size.ws_col == 0 ? 80 : Int(size.ws_col), size.ws_row == 0 ? 24 : Int(size.ws_row))
   }
 
-  func keys() -> [UInt8] {
+  func keys() -> [Key] {
     var bytes = [UInt8](repeating: 0, count: 64)
     let count = bytes.withUnsafeMutableBytes { read(STDIN_FILENO, $0.baseAddress, $0.count) }
     if count > 0 { pending.append(contentsOf: bytes.prefix(count)) }
-    var result: [UInt8] = []
+    var result: [Key] = []
     while let first = pending.first {
-      if first != 27 {
-        result.append(first)
+      guard first == 27 else {
+        result.append(.byte(first))
         pending.removeFirst()
-      } else if pending.count >= 2, pending[1] != 91 {
-        pending.removeFirst(2)
-      } else if pending.count >= 3 {
-        if pending[2] == 67 { result.append(110) } // Right
-        if pending[2] == 68 { result.append(112) } // Left
-        pending.removeFirst(3)
-      } else {
+        continue
+      }
+      if pending.count == 1 || pending[1] != 91 {
+        if pending.count == 1 && count > 0 { break }
+        result.append(.escape)
+        pending.removeFirst()
+        continue
+      }
+      if pending.count < 3 {
+        if count > 0 { break }
+        pending.removeAll()
+        continue
+      }
+      guard let end = pending.indices.dropFirst(2).first(where: { (0x40...0x7E).contains(pending[$0]) }) else {
+        if pending.count > 32 || count == 0 { pending.removeAll() }
         break
       }
+      switch pending[end] {
+      case 65: result.append(.up)
+      case 66: result.append(.down)
+      case 67: result.append(.right)
+      case 68: result.append(.left)
+      case 90: result.append(.backTab)
+      default: break
+      }
+      pending.removeFirst(end + 1)
     }
     return result
   }
 
   func draw(_ text: String) {
-    write("\u{1B}[H\u{1B}[2J" + text.replacingOccurrences(of: "\n", with: "\r\n"))
+    let rows = text.components(separatedBy: "\n")
+    guard rows != lastRows else { return }
+    let clear = lastRows.isEmpty ? "\u{1B}[2J" : ""
+    var patch = clear
+    for index in 0..<min(viewport.rows, max(rows.count, lastRows.count)) {
+      let row = index < rows.count ? rows[index] : ""
+      if index < lastRows.count, lastRows[index] == row { continue }
+      patch += "\u{1B}[\(index + 1);1H\u{1B}[2K" + row
+    }
+    lastRows = rows
+    write(patch)
   }
 
   private func write(_ text: String) {

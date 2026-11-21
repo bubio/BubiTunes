@@ -5,18 +5,33 @@ public protocol OPNASynthesizer: AnyObject {
 }
 
 struct Playback {
+  static let bufferFrames = 2048
+
   let track: VGM
   let synth: any OPNASynthesizer
   private var cursor = 0
   private var waiting = 0
   private var repeated = false
+  private(set) var activity: OPNAActivity = []
 
   init(track: VGM, synth: any OPNASynthesizer) {
     self.track = track
     self.synth = synth
   }
 
+  /// Rebuilds the synthesizer state by rendering and discarding audio.
+  mutating func skip(frames: Int, shouldCancel: () -> Bool) throws {
+    var remaining = frames
+    while remaining > 0 {
+      if shouldCancel() { throw CancellationError() }
+      let discarded = try render(upTo: min(remaining, Self.bufferFrames)).count / 2
+      if discarded == 0 { break }
+      remaining -= discarded
+    }
+  }
+
   mutating func render(upTo limit: Int) throws -> [Float] {
+    activity = []
     var pcm: [Float] = []
     pcm.reserveCapacity(limit * 2)
     while pcm.count < limit * 2 {
@@ -37,7 +52,10 @@ struct Playback {
       case .wait(let frames): waiting = frames
       case .write(let secondary, let register, let value):
         synth.write(secondary: secondary, register: register, value: value)
-      case .adpcm(let offset, let bytes): try synth.loadADPCM(bytes, at: offset)
+        activity.record(secondary: secondary, register: register)
+      case .adpcm(let offset, let bytes):
+        try synth.loadADPCM(bytes, at: offset)
+        activity.insert(.adpcm)
       }
     }
     return pcm

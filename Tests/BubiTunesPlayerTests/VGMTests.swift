@@ -72,3 +72,14 @@ private final class TestSynth: OPNASynthesizer {
   #expect(track.title == "曲名")
   #expect(track.artist == "Artist")
 }
+
+@Test func skippingIntoTheVGMLoopRecreatesTheSynthAndWaitState() throws {
+  let data = vgm([0x56, 7, 0x3E, 0x71, 0x57, 0, 4, 0x72, 0x66], loop: 4)
+  let track = try VGM(data: data, filename: "loop.vgm")
+  var continuous = Playback(track: track, synth: TestSynth())
+  let full = try continuous.render(upTo: track.duration)
+  var restored = Playback(track: track, synth: TestSynth())
+  let position = 6
+  try restored.skip(frames: position) { false }
+  #expect(try restored.render(upTo: track.duration) == Array(full.dropFirst(position * 2)))
+}

@@ -34,7 +34,6 @@ extension CoreOPNA {
     let directory = executable.deletingLastPathComponent()
     let candidates = [
       directory.appendingPathComponent("BubiTunesRhythm"),
-      directory.deletingLastPathComponent().appendingPathComponent("Resources"),
       URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("BubiTunesRhythm"),
     ]

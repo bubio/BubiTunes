@@ -10,7 +10,6 @@ let package = Package(
   name: "BubiTunes",
   platforms: [.macOS(.v15)],
   products: [
-    .library(name: "BubiTunesPlayer", targets: ["BubiTunesPlayer"]),
     .executable(name: "bubitunes", targets: ["BubiTunesCLI"]),
   ],
   dependencies: [core],

@@ -4,8 +4,9 @@ BubiTunes plays PC-88 YM2608 (OPNA) VGM and VGZ files in a terminal. It uses
 [Bubilator88Core](https://github.com/bubio/Bubilator88Core) for synthesis and
 includes substitute OPNA rhythm samples. It runs without PC-88 BIOS files.
 
-The initial standalone build targets Apple Silicon Macs running macOS 15 or
-later. Extract the release archive and keep `BubiTunesRhythm` next to the CLI.
+BubiTunes is distributed as a standalone CLI for Apple Silicon Macs running
+macOS 15 or later. Extract the BubiTunes release archive and keep
+`BubiTunesRhythm` next to the CLI.
 
 ```sh
 ./bubitunes "track 1.vgz" "track 2.vgm"
@@ -13,7 +14,6 @@ later. Extract the release archive and keep `BubiTunesRhythm` next to the CLI.
 
 Press Space to pause or resume, Left/Right or p/n to change tracks, +/− to adjust
 volume, and q to quit. Files with a loop play that section one additional time.
-The File menu in Bubilator88 can open tracks using the bundled CLI.
 
 Run `bubitunes` with no arguments to open the library, or give it a music folder
 to register and index it. The library scans `.vgm` and `.vgz` files recursively

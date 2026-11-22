@@ -157,22 +157,19 @@ def check_library(executable):
             (b"/vo", "/volume 0–100"),
             (b"\t", "volume ▏"),
             (b"35\r", "Vol 35%"),
-            (b"/p", "Matching commands  4"),
+            (b"/p", "Matching commands  3"),
             (b"\x1b[B", "› /play"),
             (b"\r", "Playing"),
             (b"/spectrum off\r", "Spectrum off."),
             (b"/help\r", "Slash commands"),
-            (b"\x1b", "Playback queue"),
+            (b"\x1b", "Library / Search"),
+            (b"P", "Playback queue"),
             (b"fF", "♥ 曲のテーマ"),
             (b"h", "Recently Played"),
-            (b"sMix\r", "Saved Mix."),
-            (b"o", "1 track"),
         ])
         interact([], [
             (b"", "曲のテーマ"),
             (b"/browse games\r", "Unknown game"),
-            (b"o", "1 track"),
-            (b"/library\r", "Library / Games"),
             ("/search 曲\r".encode(), "› ♥ 曲のテーマ"),
             (b"F", "Favorites  1"),
             (b"h", "Recently Played"),
@@ -206,25 +203,28 @@ def check_library(executable):
         (pack / "01 Opening.vgm").write_bytes(track("Zulu", "Pack Game", "Pack Artist"))
         (pack / "02 Battle.vgz").write_bytes(gzip.compress(track("Alpha", "Pack Game", "Pack Artist")))
         (pack / "10 Ending.vgm").write_bytes(track("Beta", "Pack Game", "Pack Artist"))
+        (pack / "03 Guest.vgm").write_bytes(track("Guest Tune", "Pack Game", "Side Artist"))
+        (pack / "04 Side.vgm").write_bytes(track("Side Tune", "Side Game", "Pack Artist"))
         environment["BUBITUNES_LIBRARY_DIR"] = str(root / "pack-store")
         interact([pack], [
-            (b"", "Pack Game"),
+            (b"", "Pack Artist"),
+            (b"\x1b[B", "› Pack Artist"),
             (b"\t", "▸ Game"),
-            (b"\x1b[B", "› Zulu"),
+            (b"\x1b[B", "› Pack Game"),
             (b"\t", "▸ Song"),
             (b"\x1b[B", "› Alpha"),
-            (b"\x1b[B", "› Beta"),
-            (b"/play list\r", "› 1  01 Opening.vgm"),
+            (b"\r", ("Playing", "▌ Alpha")),
+            (b"P", ("Playback queue  3", "1  01 Opening.vgm", "› 2  02 Battle.vgz", "3  10 Ending.vgm")),
+            (b"p", "› 1  01 Opening.vgm"),
             (b"n", "› 2  02 Battle.vgz"),
             (b" ", "Paused"),
-            (b"l", "▸ Song"),
-            (b"P", "› 2  02 Battle.vgz"),
             (b"P", "▸ Song"),
-            (b"P", "› 2  02 Battle.vgz"),
+            (b"\x1b[D", "▸ Game"),
+            (b"\x1b[B", "› Side Game"),
+            (b"P", ("Playback queue  3", "› 2  02 Battle.vgz")),
             (b" ", "Playing"),
             (b"n", "› 3  10 Ending.vgm"),
-            (b"/play game Pack Game\r", "› 1  01 Opening.vgm"),
-            (b"n", "› 2  02 Battle.vgz"),
+            (b"p", "› 2  02 Battle.vgz"),
             (b"/volume 29\r", "Vol 29%"),
             (b"/repeat all\r", "Repeat queue"),
             (b"/spectrum off\r", "Spectrum off   /spectrum on"),
@@ -239,6 +239,23 @@ def check_library(executable):
         ])
         interact([pack / "10 Ending.vgm"], [
             (b"", ("Playing", "Beta", "› 1  10 Ending.vgm", "0:00 / 0:08", "Vol 29%")),
+        ])
+
+        interact([], [
+            (b"", "Pack Artist"),
+            (b"/Tune ", "› Guest Tune"),
+            (b"\x1b[B", "› Side Tune"),
+            (b"\r", ("Playing", "▌ Side Tune")),
+            (b"P", ("Playback queue  2", "1  03 Guest.vgm", "› 2  04 Side.vgm")),
+            (b"P", "Library / Search"),
+            (b"/search Alpha\r", "› Alpha"),
+            (b"f", "Added to favorites."),
+            (b"/search Beta\r", "› Beta"),
+            (b"f", "Added to favorites."),
+            (b"F", "Favorites  2"),
+            (b"\x1b[B", "› ♥ Alpha"),
+            (b"\r", "▌ Alpha"),
+            (b"P", ("Playback queue  2", "1  10 Ending.vgm", "› 2  02 Battle.vgz")),
         ])
 
         environment["BUBITUNES_LIBRARY_DIR"] = str(root / "store")

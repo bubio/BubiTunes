@@ -3,7 +3,7 @@ import Foundation
 enum SlashCommand: String, CaseIterable {
   case help, play, pause, next, prev, restart, volume, shuffle
   case repeatMode = "repeat"
-  case library, browse, favorites, history, playlists, rescan, search, spectrum, quit
+  case library, browse, favorites, history, rescan, search, spectrum, quit
 
   static func parse(_ input: String) -> (command: Self, argument: Substring)? {
     let parts = input.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -53,7 +53,6 @@ enum SlashCommand: String, CaseIterable {
     case .browse: "Switch library grouping"
     case .favorites: "Open favorites"
     case .history: "Open recently played tracks"
-    case .playlists: "Open saved playlists"
     case .rescan: "Rescan registered folders"
     case .search: "Find tracks by GD3 or filename"
     case .spectrum: "Show or hide the spectrum"
@@ -69,6 +68,6 @@ enum SlashCommand: String, CaseIterable {
     "/repeat off|one|all   S Shuffle   R Repeat",
     "/volume 0–100   /spectrum on|off   /quit",
     "/browse columns|games|artists|tracks   /search <text>",
-    "/library   /favorites   /history   /playlists   /rescan",
+    "/library   /favorites   /history   /rescan",
   ]
 }

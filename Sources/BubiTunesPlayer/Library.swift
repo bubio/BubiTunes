@@ -22,7 +22,8 @@ struct Library: Codable {
   var folders: [String] = []
   var favorites: [String] = []
   var history: [String] = []
-  var playlists: [String: [String]] = [:]
+  // Preserve data from older versions when writing the library back to disk.
+  private var playlists: [String: [String]]?
   var playbackPreferences: PlaybackPreferences?
   var playbackQueue: SavedQueue?
 

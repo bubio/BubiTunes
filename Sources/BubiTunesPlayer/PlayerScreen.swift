@@ -268,15 +268,15 @@ struct PlayerScreen {
     } else if help != nil {
       visible = key(canvas, "Esc", "Back")
     } else if !columns.isEmpty {
-      let action = columns.last?.focused == true ? "Play song" : "Next pane"
+      let action = columns.last?.focused == true ? "Play from song" : "Next pane"
       visible = key(canvas, "← →", "Pane") + canvas.text("  ") + key(canvas, "↑↓", "Select") +
         canvas.text("  ") + key(canvas, "Enter", action) + canvas.text("  ") +
         key(canvas, "P", "Queue") + canvas.text("  ") + key(canvas, "S", "Shuffle")
     } else if browsingLibrary {
-      visible = key(canvas, "↑↓", "Select") + canvas.text("  ") + key(canvas, "Enter", "Open / play") +
+      visible = key(canvas, "↑↓", "Select") + canvas.text("  ") + key(canvas, "Enter", "Open / play from here") +
         canvas.text("  ") + key(canvas, "P", "Queue") + canvas.text("  ") + key(canvas, "S", "Shuffle")
     } else if chooser {
-      visible = key(canvas, "↑↓", "Select") + canvas.text("  ") + key(canvas, "Enter", "Play") +
+      visible = key(canvas, "↑↓", "Select") + canvas.text("  ") + key(canvas, "Enter", "Play from here") +
         canvas.text("  ") + key(canvas, "P", "Queue") + canvas.text("  ") + key(canvas, "S", "Shuffle")
     } else {
       visible = key(canvas, "Space", "Pause") + canvas.text("  ") + key(canvas, "← →", "Track") +

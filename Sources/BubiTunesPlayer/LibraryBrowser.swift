@@ -8,19 +8,17 @@ final class LibraryBrowser {
     case library = "Library"
     case favorites = "Favorites"
     case history = "Recently Played"
-    case playlists = "Saved Playlists"
   }
 
   enum Prompt: String {
     case search = "Search"
     case folder = "Add folder"
-    case playlist = "Save queue as"
   }
 
   struct Row {
     let title: String
     let detail: String
-    let paths: [String]
+    var path: String? = nil
     var group: LibraryGroup? = nil
   }
 
@@ -81,12 +79,11 @@ final class LibraryBrowser {
   }
 
   var promptText: String { String(decoding: input, as: UTF8.self) }
-  var selectedPaths: [String] {
+  var selectedPath: String? {
     if showsColumns {
-      guard columns.focus == .song, let path = columns.selectedSong?.path else { return [] }
-      return [path]
+      return columns.focus == .song ? columns.selectedSong?.path : nil
     }
-    return rows.indices.contains(selection) ? rows[selection].paths : []
+    return rows.indices.contains(selection) ? rows[selection].path : nil
   }
 
   func isFavorite(_ path: String) -> Bool { state.favorites.contains(path) }
@@ -167,8 +164,7 @@ final class LibraryBrowser {
     switch view {
     case .library where showsColumns: columns.songs.map(\.path)
     case .library where query.isEmpty: hierarchy.tracks(in: indexed).map(\.path)
-    case .library, .favorites, .history: rows.flatMap(\.paths)
-    case .playlists: selectedPaths
+    case .library, .favorites, .history: rows.compactMap(\.path)
     case nil: []
     }
   }
@@ -267,13 +263,13 @@ final class LibraryBrowser {
     rebuildRows()
   }
 
-  func submit(queue: [String]) {
+  func submit() {
     notice = ""
-    let text = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
     let kind = prompt
     prompt = nil
     switch kind {
     case .folder:
+      let text = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
       let url = URL(fileURLWithPath: (text as NSString).expandingTildeInPath).standardizedFileURL
       guard !text.isEmpty, (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else {
         notice = "Folder not found."
@@ -283,18 +279,7 @@ final class LibraryBrowser {
         open(.library)
         rescan()
       }
-    case .playlist:
-      guard !text.isEmpty, !queue.isEmpty else {
-        notice = "Choose a playlist name and add tracks to the queue first."
-        return
-      }
-      if update({ library in
-        guard library.playlists[text] == nil else {
-          throw VGMError.invalid("a playlist named \(text) already exists")
-        }
-        library.playlists[text] = queue
-      }) { notice = "Saved \(text)." }
-    case .search: filter(text)
+    case .search: if promptText != query { filter(promptText) }
     case nil: break
     }
   }
@@ -366,20 +351,13 @@ final class LibraryBrowser {
     }
 
     switch view {
-    case .playlists:
-      rows = state.playlists.keys.sorted().compactMap { name in
-        guard let paths = state.playlists[name],
-              query.isEmpty || name.localizedCaseInsensitiveContains(query) else { return nil }
-        let count = paths.count == 1 ? "1 track" : "\(paths.count) tracks"
-        return Row(title: name, detail: count, paths: paths)
-      }
     case .library where showsColumns:
       rows = []
     case .library where query.isEmpty:
       if let groups = hierarchy.groups(in: indexed) {
         rows = groups.map { row in
           let label = row.trackCount == 1 ? "1 track" : "\(row.trackCount) tracks"
-          return Row(title: "▸ " + row.group.title, detail: label, paths: [], group: row.group)
+          return Row(title: "▸ " + row.group.title, detail: label, group: row.group)
         }
       } else {
         rows = trackRows(hierarchy.tracks(in: indexed))
@@ -402,7 +380,7 @@ final class LibraryBrowser {
     let favorites = Set(state.favorites)
     return tracks.map { item in
       let favorite = favorites.contains(item.path) ? "♥ " : ""
-      return Row(title: favorite + item.title, detail: item.detail, paths: [item.path])
+      return Row(title: favorite + item.title, detail: item.detail, path: item.path)
     }
   }
 }

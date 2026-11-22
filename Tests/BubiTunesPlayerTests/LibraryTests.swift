@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import BubiTunesPlayer
 
-@Test func libraryPersistsFoldersFavoritesHistoryAndPlaylists() throws {
+@Test func libraryPersistsFoldersFavoritesAndHistory() throws {
   let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
   defer { try? FileManager.default.removeItem(at: directory) }
   let store = try LibraryStore(directory: directory)
@@ -14,14 +14,12 @@ import Testing
     $0.recordPlay("/Music/song.vgm")
     $0.recordPlay("/Music/other.vgz")
     $0.recordPlay("/Music/song.vgm")
-    $0.playlists["Mix"] = ["/Music/other.vgz", "/Music/song.vgm"]
   }
 
   let loaded = try store.read()
   #expect(loaded.folders == ["/Music"])
   #expect(loaded.favorites == ["/Music/song.vgm"])
   #expect(loaded.history == ["/Music/song.vgm", "/Music/other.vgz"])
-  #expect(loaded.playlists["Mix"] == ["/Music/other.vgz", "/Music/song.vgm"])
   #expect(try store.update { $0.toggleFavorite("/Music/song.vgm") }.favorites.isEmpty)
 }
 
@@ -146,7 +144,7 @@ private func storeUpdate(directory: URL) throws {
   let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
   try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
   defer { try? FileManager.default.removeItem(at: directory) }
-  let oldLibrary = #"{"folders":["/Music"],"favorites":[],"history":[],"playlists":{}}"#
+  let oldLibrary = #"{"folders":["/Music"],"favorites":[],"history":[],"playlists":{"Mix":["/Music/first.vgm"]}}"#
   try Data(oldLibrary.utf8).write(to: directory.appendingPathComponent("library.json"))
   let store = try LibraryStore(directory: directory)
   let before = try store.read()
@@ -166,4 +164,7 @@ private func storeUpdate(directory: URL) throws {
   #expect(after.playbackQueue?.index == 1)
   #expect(after.playbackQueue?.frame == 66_150)
   #expect(after.playbackQueue?.shuffled == true)
+  let json = try JSONSerialization.jsonObject(with: Data(contentsOf: directory.appendingPathComponent("library.json")))
+  let legacyPlaylists = (json as? [String: Any])?["playlists"] as? [String: [String]]
+  #expect(legacyPlaylists == ["Mix": ["/Music/first.vgm"]])
 }

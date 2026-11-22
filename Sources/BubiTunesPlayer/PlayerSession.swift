@@ -155,14 +155,14 @@ final class PlayerSession {
       case .byte(9):
         if let command = browser.selectedCompletion {
           browser.complete(command)
-        } else if browser.prompt == .search {
-          queue.append(contentsOf: browser.selectedPaths)
+        } else if browser.prompt == .search, let path = browser.selectedPath {
+          queue.append(path)
         }
       case .byte(10), .byte(13):
         if browser.prompt == .search {
           return submitSlash()
         }
-        browser.submit(queue: queue)
+        browser.submit()
       case .up: browser.movePromptSelection(-1)
       case .down: browser.movePromptSelection(1)
       case .byte(let value): browser.type(value)
@@ -192,9 +192,7 @@ final class PlayerSession {
       browser.cycleGrouping()
     case .byte(104): show(.history)
     case .byte(70): show(.favorites)
-    case .byte(111): show(.playlists)
     case .byte(100): keepOpen = true; browser.start(.folder)
-    case .byte(115): keepOpen = true; browser.start(.playlist)
     case .byte(114): if browser.view != nil { browser.rescan() }
     case .byte(80):
       browser.toggleQueue()
@@ -206,13 +204,13 @@ final class PlayerSession {
     case .byte(102):
       if browser.view == nil, playing != nil {
         browser.setFavorite(queue[index])
-      } else if browser.view != .playlists, let path = browser.selectedPaths.first {
+      } else if let path = browser.selectedPath {
         browser.setFavorite(path)
       }
     case .up, .byte(107): browser.move(-1)
     case .down, .byte(106): browser.move(1)
     case .byte(97):
-      queue.append(contentsOf: browser.selectedPaths)
+      if let path = browser.selectedPath { queue.append(path) }
     case .byte(9):
       if browser.showsColumns { browser.moveColumn(1, wrap: true) }
     case .backTab:
@@ -259,7 +257,7 @@ final class PlayerSession {
       }
       return runSlash(parsed.command, argument: parsed.argument)
     }
-    browser.submit(queue: queue)
+    browser.submit()
     playSelection()
     return false
   }
@@ -313,7 +311,6 @@ final class PlayerSession {
       }
     case .favorites: show(.favorites)
     case .history: show(.history)
-    case .playlists: show(.playlists)
     case .rescan:
       show(.library)
       browser.rescan()
@@ -366,13 +363,17 @@ final class PlayerSession {
       browser.notice = emptyNotice
       return
     }
+    startQueue(shuffled ? tracks.shuffled() : tracks, at: 0, shuffled: shuffled)
+    browser.close()
+  }
+
+  private func startQueue(_ tracks: [String], at position: Int, shuffled: Bool) {
     browser.notice = ""
+    queue = tracks
+    index = position
     shuffledQueue = shuffled
-    queue = shuffled ? tracks.shuffled() : tracks
-    index = 0
     resumeFrame = nil
     playing = nil
-    browser.close()
   }
 
   private func goBack() {
@@ -390,13 +391,10 @@ final class PlayerSession {
   }
 
   private func playSelection() {
-    let selected = browser.selectedPaths
-    guard !selected.isEmpty else { return }
-    if playing != nil { index += 1 }
-    queue.insert(contentsOf: selected, at: index)
-    resumeFrame = nil
-    playing = nil
-    if !browser.showsColumns { browser.close() }
+    guard let selected = browser.selectedPath else { return }
+    let tracks = browser.collectionPaths
+    guard let position = tracks.firstIndex(of: selected) else { return }
+    startQueue(tracks, at: position, shuffled: false)
   }
 
   private func show(_ view: LibraryBrowser.View, preservingView: Bool = false) {
@@ -452,7 +450,7 @@ final class PlayerSession {
     }
     let help = SlashCommand.helpLines + [
       "l Library   d Register folder   r Rescan   F Favorites",
-      "h History   o Saved playlists   s Save current queue",
+      "h History   a Add selected song to queue",
       "g Group library   P Queue / browse   S Shuffle   R Repeat",
       "← → or Tab Switch pane   Enter Open or play   Esc Back",
     ]

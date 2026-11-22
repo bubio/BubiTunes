@@ -21,7 +21,11 @@ and searches both Japanese and English GD3 fields. The library opens with
 three panes: Artist and Game on top, with a full-width Song list below.
 Game uses the GD3 game name. Select
 with Up/Down, move among panes with Left/Right or Tab/Shift-Tab, and press
-Enter in Song to play. On a narrow terminal, only the focused pane is shown.
+Enter in Song to replace the queue with the filtered Song list and start at
+the selected song. The queue keeps the displayed order, including tracks
+before the starting song. Browsing stays open, and changing filters does not
+change the queue until you start playback from the new list. On a narrow
+terminal, only the focused pane is shown.
 Choose All artists or All games to remove that filter. Missing tags appear
 under Unknown artist or Unknown game.
 
@@ -33,10 +37,9 @@ track list. Use `/browse columns` to return to columns directly.
 | `l`, `d`, `r` | Open library, register a folder, rescan registered folders |
 | `←`, `→`, `Tab`, `g` | Move between library panes or switch browser layout |
 | `/`, `↑`, `↓` | Filter the current view or enter a slash command |
-| `Enter`, `a` | Play the selection immediately or add it to the queue |
+| `Enter`, `a` | Play the displayed list from the selected song, or append just the selected song |
 | `Tab` | Add the search selection to the queue while the search prompt is open |
 | `f`, `F`, `h` | Toggle a favorite, open favorites, or open recently played tracks |
-| `s`, `o` | Save the current queue as a named playlist or open saved playlists |
 
 Press `/` to see command suggestions. Type to narrow the list, select with
 Up/Down, and use Tab to complete or Enter to run. Type `/help` for shortcuts,
@@ -59,7 +62,8 @@ the queue with the open collection and start from the first track. Use
 use `/play game`, or provide its GD3 name with `/play game <game name>`.
 In columns, `/play list` and `S` use the songs shown after artist and game
 filtering. With a game selected, Song and `/play list` follow natural filename
-order (01, 02, 10) and display the GD3 titles.
+order (01, 02, 10) and display the GD3 titles. Enter uses the displayed order
+in the library, search results, favorites, and history.
 
 Press uppercase `S` to shuffle the open list, or the entire current queue
 from the player view. You can also use `/shuffle favorites`, `/shuffle library`,
@@ -70,7 +74,7 @@ Uppercase `R` cycles through Repeat off, Repeat one, and Repeat queue.
 Use `/repeat off`, `/repeat one`, or `/repeat all` to choose directly. These
 modes apply after a VGM finishes its own playback, including its file loop.
 
-Registered folders, favorites, history, and playlists are stored in
+Registered folders, favorites, and history are stored in
 `~/Library/Application Support/BubiTunes/library.json`. On exit, BubiTunes also
 saves the volume, repeat mode, spectrum visibility, queue order, and playback
 position. When started without explicit track files, it restores the queue and

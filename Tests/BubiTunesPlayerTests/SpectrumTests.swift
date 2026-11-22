@@ -38,8 +38,8 @@ import Testing
 
 @Test func slashSuggestionsNarrowIncrementallyAndPromoteTheExactCommand() {
   #expect(SlashCommand.matches("").count == SlashCommand.allCases.count)
-  #expect(SlashCommand.matches("p") == [.pause, .play, .playlists, .prev])
-  #expect(SlashCommand.matches("PLAY") == [.play, .playlists])
+  #expect(SlashCommand.matches("p") == [.pause, .play, .prev])
+  #expect(SlashCommand.matches("PLAY") == [.play])
   #expect(SlashCommand.matches("vol") == [.volume])
   #expect(SlashCommand.matches("volume ").isEmpty)
   #expect(SlashCommand.matches("曲").isEmpty)

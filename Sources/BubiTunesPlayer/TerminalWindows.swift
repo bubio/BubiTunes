@@ -26,7 +26,12 @@ import WinSDK
 // The flag lives in a class box so the active instance can publish it
 // through the slot by reference; Mutex is a value type, so it can
 // neither be shared by assignment nor compared by identity.
-private final class InterruptBox {
+// @unchecked Sendable: the only stored property is a Mutex, which
+// guards every access to the flag, so sharing a box across isolation
+// domains is thread-safe in practice. The conformance is needed to
+// publish the box through ctrlHandlerSlot (a Mutex) without tripping
+// Swift 6 region-isolation diagnostics on the `inout sending` closure.
+private final class InterruptBox: @unchecked Sendable {
   let flag = Mutex(false)
 }
 

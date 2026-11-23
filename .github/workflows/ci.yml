@@ -47,12 +47,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # macOS 向け公式ツールチェーンは .pkg 形式のため、バージョン固定には
-      # swift-actions/setup-swift を使う。バージョンは Linux 側と合わせて 6.4.3。
+      # macOS 向け公式ツールチェーン (.pkg) を直接導入する。
+      # swift-actions/setup-swift では 6.4.3 が利用可能バージョンに無いため使わない。
       - name: Install Swift 6.4.3
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.4.3"
+        run: |
+          curl -fsSL -O https://download.swift.org/swift-6.4.3-release/xcode/swift-6.4.3-RELEASE/swift-6.4.3-RELEASE-osx.pkg
+          sudo installer -pkg swift-6.4.3-RELEASE-osx.pkg -target /
+          echo "/Library/Developer/Toolchains/swift-6.4.3-RELEASE.xctoolchain/usr/bin" >> "$GITHUB_PATH"
 
       - name: Show Swift version
         run: swift --version

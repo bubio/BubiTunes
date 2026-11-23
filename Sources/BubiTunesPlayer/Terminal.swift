@@ -1,3 +1,4 @@
+#if !os(Windows)
 #if canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
@@ -132,3 +133,4 @@ final class Terminal {
     FileHandle.standardOutput.write(Data(text.utf8))
   }
 }
+#endif

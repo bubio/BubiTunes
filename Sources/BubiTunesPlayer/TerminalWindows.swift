@@ -25,7 +25,7 @@ import WinSDK
 // published through a file-scope slot while the terminal is alive.
 private let ctrlHandlerSlot = Mutex<Mutex<Bool>?>(nil)
 
-private func bubiTunesConsoleCtrlHandler(_ type: DWORD) -> BOOL {
+private func bubiTunesConsoleCtrlHandler(_ type: DWORD) -> WindowsBool {
   ctrlHandlerSlot.withLock { $0 }?.withLock { $0 = true }
   return TRUE
 }

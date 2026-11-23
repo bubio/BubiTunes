@@ -62,8 +62,8 @@ final class WindowsTerminal {
     else {
       throw VGMError.unsupported("an interactive terminal is required")
     }
-    guard GetConsoleMode(inputHandle, &savedInputMode) != WindowsBool(false),
-      GetConsoleMode(outputHandle, &savedOutputMode) != WindowsBool(false)
+    guard GetConsoleMode(inputHandle, &savedInputMode) != false,
+      GetConsoleMode(outputHandle, &savedOutputMode) != false
     else { throw POSIXError(.EIO) }
 
     SetConsoleCP(65001)  // CP_UTF8
@@ -74,12 +74,12 @@ final class WindowsTerminal {
     let inputMode = (savedInputMode & ~DWORD(bitPattern: ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT))
       | DWORD(bitPattern: ENABLE_VIRTUAL_TERMINAL_INPUT)
     let outputMode = savedOutputMode | DWORD(bitPattern: ENABLE_VIRTUAL_TERMINAL_PROCESSING)
-    guard SetConsoleMode(inputHandle, inputMode) != WindowsBool(false),
-      SetConsoleMode(outputHandle, outputMode) != WindowsBool(false)
+    guard SetConsoleMode(inputHandle, inputMode) != false,
+      SetConsoleMode(outputHandle, outputMode) != false
     else { throw POSIXError(.EIO) }
 
     ctrlHandlerSlot.withLock { $0 = interruptBox }
-    SetConsoleCtrlHandler(bubiTunesConsoleCtrlHandler, WindowsBool(true))
+    SetConsoleCtrlHandler(bubiTunesConsoleCtrlHandler, true)
     active = true
     write("\u{1B}[?1049h\u{1B}[?25l\u{1B}[?7l")
   }
@@ -95,7 +95,7 @@ final class WindowsTerminal {
       SetConsoleMode(inputHandle, savedInputMode)
       SetConsoleMode(outputHandle, savedOutputMode)
     }
-    SetConsoleCtrlHandler(bubiTunesConsoleCtrlHandler, WindowsBool(false))
+    SetConsoleCtrlHandler(bubiTunesConsoleCtrlHandler, false)
     ctrlHandlerSlot.withLock { slot in
       if slot === interruptBox { slot = nil }
     }
@@ -105,7 +105,7 @@ final class WindowsTerminal {
 
   var viewport: (columns: Int, rows: Int) {
     var info = CONSOLE_SCREEN_BUFFER_INFO()
-    guard GetConsoleScreenBufferInfo(outputHandle, &info) != WindowsBool(false) else { return (80, 24) }
+    guard GetConsoleScreenBufferInfo(outputHandle, &info) != false else { return (80, 24) }
     let columns = Int(info.srWindow.Right - info.srWindow.Left) + 1
     let rows = Int(info.srWindow.Bottom - info.srWindow.Top) + 1
     return (columns <= 0 ? 80 : columns, rows <= 0 ? 24 : rows)
@@ -119,7 +119,7 @@ final class WindowsTerminal {
       let ok = bytes.withUnsafeMutableBytes {
         ReadFile(inputHandle, $0.baseAddress, DWORD($0.count), &read, nil)
       }
-      if ok != WindowsBool(false), read > 0 {
+      if ok, read > 0 {
         count = Int(read)
         pending.append(contentsOf: bytes.prefix(count))
       }

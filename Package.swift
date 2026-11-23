@@ -6,6 +6,23 @@ let localCore = ProcessInfo.processInfo.environment["BUBITUNES_CORE_DIR"]
 let core: Package.Dependency = localCore.map { .package(path: $0) }
   ?? .package(url: "https://github.com/bubio/Bubilator88Core.git", from: "1.13.0")
 
+// Windows has no system zlib for SwiftPM to resolve, so there the CZlib
+// target is built from the vendored sources in Sources/CZlibVendored.
+// Everywhere else CZlib stays a systemLibrary target backed by the
+// system zlib. The target name is "CZlib" in both cases and the module
+// exposes the same shim.h, so the Swift sources do not change.
+#if os(Windows)
+let zlibTarget: Target = .target(
+  name: "CZlib",
+  path: "Sources/CZlibVendored",
+  exclude: ["NOTICE.txt"],
+  publicHeadersPath: "include"
+)
+#else
+let zlibTarget: Target = .systemLibrary(
+  name: "CZlib", pkgConfig: "zlib", providers: [.apt(["zlib1g-dev"])])
+#endif
+
 let package = Package(
   name: "BubiTunes",
   platforms: [.macOS(.v15)],
@@ -14,7 +31,7 @@ let package = Package(
   ],
   dependencies: [core],
   targets: [
-    .systemLibrary(name: "CZlib", pkgConfig: "zlib", providers: [.apt(["zlib1g-dev"])]),
+    zlibTarget,
     .target(
       name: "CMinAudio",
       exclude: ["NOTICE.txt"],

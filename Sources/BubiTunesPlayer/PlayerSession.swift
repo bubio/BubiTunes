@@ -7,7 +7,7 @@ final class PlayerSession {
     var paused = false
   }
 
-  private let terminal: Terminal
+  private let terminal: PlatformTerminal
   private let browser: LibraryBrowser
   private let makeSynth: (Int) throws -> any OPNASynthesizer
   private var queue: [String] = []
@@ -39,7 +39,7 @@ final class PlayerSession {
       }
     }
     keepOpen = queue.isEmpty || !folders.isEmpty
-    terminal = try Terminal()
+    terminal = try PlatformTerminal()
     browser = try LibraryBrowser(folders: folders)
     originalPreferences = browser.playbackPreferences
     preferences = originalPreferences
@@ -140,7 +140,7 @@ final class PlayerSession {
     resumeFrame = nil
   }
 
-  private func handle(_ key: Terminal.Key) -> Bool {
+  private func handle(_ key: PlatformTerminal.Key) -> Bool {
     switch key {
     case .byte(3), .byte(4): return true
     default: break

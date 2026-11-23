@@ -1,0 +1,49 @@
+------------------------------------------------------------------------------
+        zlib
+        Copyright (C) 1995-2026 Jean-loup Gailly and Mark Adler
+------------------------------------------------------------------------------
+
+This directory vendors a subset of zlib, a general-purpose data
+compression library, for use on Windows, where SwiftPM cannot resolve
+the CZlib systemLibrary target against a system zlib. Only the inflate
+(decompression) sources needed to decode gzip streams are included.
+On macOS and Linux the package keeps using the system zlib instead
+(the CZlib target stays a systemLibrary there; see Package.swift).
+
+  Source:  https://zlib.net/zlib-1.4.tar.gz
+           (also published at https://github.com/madler/zlib, tag "v1.4")
+  Version: 1.4
+  Files:   include/zlib.h, include/zconf.h (unmodified upstream headers)
+           include/shim.h (same one-line shim as Sources/CZlib)
+           adler32.c, crc32.c, crc32.h, gzguts.h, inflate.c, inflate.h,
+           inffast.c, inffast.h, inffixed.h, inftrees.c, inftrees.h,
+           zutil.c, zutil.h (unmodified upstream sources)
+
+To update, replace the files above with those from a newer upstream
+release tarball and adjust the version recorded above.
+
+zlib is available under the following license (reproduced verbatim
+from the upstream LICENSE file):
+
+Copyright notice:
+
+ (C) 1995-2026 Jean-loup Gailly and Mark Adler
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+
+  Jean-loup Gailly        Mark Adler
+  jloup@gzip.org          madler@alumni.caltech.edu

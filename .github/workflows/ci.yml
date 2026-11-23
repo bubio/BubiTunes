@@ -63,3 +63,30 @@ jobs:
 
       - name: Test
         run: swift test
+
+  build-windows:
+    name: Windows
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Swift 6.4.3
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: "6.4.3"
+
+      - name: Show Swift version
+        shell: pwsh
+        run: swift --version
+
+      - name: Build
+        shell: pwsh
+        run: |
+          swift build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test
+        shell: pwsh
+        run: |
+          swift test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

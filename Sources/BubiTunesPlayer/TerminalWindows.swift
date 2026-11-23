@@ -23,11 +23,18 @@ import WinSDK
 // sets the same interrupted flag shouldQuit reads. The handler is a C
 // function without a context pointer, so the active instance's flag is
 // published through a file-scope slot while the terminal is alive.
-private let ctrlHandlerSlot = Mutex<Mutex<Bool>?>(nil)
+// The flag lives in a class box so the active instance can publish it
+// through the slot by reference; Mutex is a value type, so it can
+// neither be shared by assignment nor compared by identity.
+private final class InterruptBox {
+  let flag = Mutex(false)
+}
+
+private let ctrlHandlerSlot = Mutex<InterruptBox?>(nil)
 
 private func bubiTunesConsoleCtrlHandler(_ type: DWORD) -> WindowsBool {
-  ctrlHandlerSlot.withLock { $0 }?.withLock { $0 = true }
-  return TRUE
+  ctrlHandlerSlot.withLock { $0 }?.flag.withLock { $0 = true }
+  return WindowsBool(true)
 }
 
 final class WindowsTerminal {
@@ -40,7 +47,7 @@ final class WindowsTerminal {
   private let outputHandle: HANDLE
   private var savedInputMode: DWORD = 0
   private var savedOutputMode: DWORD = 0
-  private let interrupted = Mutex(false)
+  private let interruptBox = InterruptBox()
   private var pending: [UInt8] = []
   private var active = false
   private var lastRows: [String] = []
@@ -55,22 +62,24 @@ final class WindowsTerminal {
     else {
       throw VGMError.unsupported("an interactive terminal is required")
     }
-    guard GetConsoleMode(inputHandle, &savedInputMode) != FALSE,
-      GetConsoleMode(outputHandle, &savedOutputMode) != FALSE
+    guard GetConsoleMode(inputHandle, &savedInputMode) != WindowsBool(false),
+      GetConsoleMode(outputHandle, &savedOutputMode) != WindowsBool(false)
     else { throw POSIXError(.EIO) }
 
     SetConsoleCP(65001)  // CP_UTF8
     SetConsoleOutputCP(65001)
 
-    let inputMode = (savedInputMode & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT))
-      | ENABLE_VIRTUAL_TERMINAL_INPUT
-    let outputMode = savedOutputMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING
-    guard SetConsoleMode(inputHandle, inputMode) != FALSE,
-      SetConsoleMode(outputHandle, outputMode) != FALSE
+    // The ENABLE_* constants are imported as Int32 while console modes
+    // are DWORD (UInt32), so convert each flag before the arithmetic.
+    let inputMode = (savedInputMode & ~DWORD(bitPattern: ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT))
+      | DWORD(bitPattern: ENABLE_VIRTUAL_TERMINAL_INPUT)
+    let outputMode = savedOutputMode | DWORD(bitPattern: ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+    guard SetConsoleMode(inputHandle, inputMode) != WindowsBool(false),
+      SetConsoleMode(outputHandle, outputMode) != WindowsBool(false)
     else { throw POSIXError(.EIO) }
 
-    ctrlHandlerSlot.withLock { $0 = interrupted }
-    SetConsoleCtrlHandler(bubiTunesConsoleCtrlHandler, TRUE)
+    ctrlHandlerSlot.withLock { $0 = interruptBox }
+    SetConsoleCtrlHandler(bubiTunesConsoleCtrlHandler, WindowsBool(true))
     active = true
     write("\u{1B}[?1049h\u{1B}[?25l\u{1B}[?7l")
   }
@@ -86,17 +95,17 @@ final class WindowsTerminal {
       SetConsoleMode(inputHandle, savedInputMode)
       SetConsoleMode(outputHandle, savedOutputMode)
     }
-    SetConsoleCtrlHandler(bubiTunesConsoleCtrlHandler, FALSE)
+    SetConsoleCtrlHandler(bubiTunesConsoleCtrlHandler, WindowsBool(false))
     ctrlHandlerSlot.withLock { slot in
-      if slot === interrupted { slot = nil }
+      if slot === interruptBox { slot = nil }
     }
   }
 
-  var shouldQuit: Bool { interrupted.withLock { $0 } }
+  var shouldQuit: Bool { interruptBox.flag.withLock { $0 } }
 
   var viewport: (columns: Int, rows: Int) {
     var info = CONSOLE_SCREEN_BUFFER_INFO()
-    guard GetConsoleScreenBufferInfo(outputHandle, &info) != FALSE else { return (80, 24) }
+    guard GetConsoleScreenBufferInfo(outputHandle, &info) != WindowsBool(false) else { return (80, 24) }
     let columns = Int(info.srWindow.Right - info.srWindow.Left) + 1
     let rows = Int(info.srWindow.Bottom - info.srWindow.Top) + 1
     return (columns <= 0 ? 80 : columns, rows <= 0 ? 24 : rows)
@@ -110,7 +119,7 @@ final class WindowsTerminal {
       let ok = bytes.withUnsafeMutableBytes {
         ReadFile(inputHandle, $0.baseAddress, DWORD($0.count), &read, nil)
       }
-      if ok != FALSE, read > 0 {
+      if ok != WindowsBool(false), read > 0 {
         count = Int(read)
         pending.append(contentsOf: bytes.prefix(count))
       }

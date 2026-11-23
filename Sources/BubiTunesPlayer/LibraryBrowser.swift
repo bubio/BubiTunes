@@ -1,4 +1,3 @@
-#if os(macOS)
 import Dispatch
 import Foundation
 import Synchronization
@@ -384,4 +383,3 @@ final class LibraryBrowser {
     }
   }
 }
-#endif

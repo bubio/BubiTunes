@@ -11,17 +11,12 @@ public enum BubiTunes {
     }
     let paths = arguments.first == "--" ? Array(arguments.dropFirst()) : arguments
 
-    #if os(macOS)
     do {
       return try PlayerSession(paths: paths, makeSynth: makeSynth).run()
     } catch {
       FileHandle.standardError.write(Data((terminalText(error.localizedDescription) + "\n").utf8))
       return 1
     }
-    #else
-    print("BubiTunes audio output currently requires macOS.")
-    return 1
-    #endif
   }
 }
 

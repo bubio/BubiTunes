@@ -15,9 +15,17 @@ let package = Package(
   dependencies: [core],
   targets: [
     .systemLibrary(name: "CZlib", pkgConfig: "zlib", providers: [.apt(["zlib1g-dev"])]),
-    .target(name: "BubiTunesPlayer", dependencies: ["CZlib"]),
+    .target(
+      name: "CMinAudio",
+      exclude: ["NOTICE.txt"],
+      linkerSettings: [
+        .linkedLibrary("m", .when(platforms: [.linux])),
+        .linkedLibrary("dl", .when(platforms: [.linux])),
+      ]
+    ),
+    .target(name: "BubiTunesPlayer", dependencies: ["CZlib", "CMinAudio"]),
     .executableTarget(name: "BubiTunesCLI", dependencies: [
-      "BubiTunesPlayer", .product(name: "Bubilator88Core", package: "Bubilator88Core"),
+      "BubiTunesPlayer", "CMinAudio", .product(name: "Bubilator88Core", package: "Bubilator88Core"),
     ]),
     .testTarget(name: "BubiTunesPlayerTests", dependencies: ["BubiTunesPlayer"]),
   ]

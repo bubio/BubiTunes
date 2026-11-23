@@ -1,8 +1,17 @@
-#if os(macOS)
+#if canImport(Darwin)
 import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 import Dispatch
 import Foundation
 import Synchronization
+
+#if canImport(Darwin)
+private typealias SignalHandler = sig_t
+#elseif canImport(Glibc)
+private typealias SignalHandler = __sighandler_t
+#endif
 
 final class Terminal {
   enum Key {
@@ -13,7 +22,7 @@ final class Terminal {
   private var saved = termios()
   private let interrupted = Mutex(false)
   private var signals: [DispatchSourceSignal] = []
-  private var previousHandlers: [(Int32, sig_t?)] = []
+  private var previousHandlers: [(Int32, SignalHandler?)] = []
   private var pending: [UInt8] = []
   private var active = false
   private var lastRows: [String] = []
@@ -62,7 +71,7 @@ final class Terminal {
 
   var viewport: (columns: Int, rows: Int) {
     var size = winsize()
-    guard ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 else { return (80, 24) }
+    guard ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &size) == 0 else { return (80, 24) }
     return (size.ws_col == 0 ? 80 : Int(size.ws_col), size.ws_row == 0 ? 24 : Int(size.ws_row))
   }
 
@@ -123,4 +132,3 @@ final class Terminal {
     FileHandle.standardOutput.write(Data(text.utf8))
   }
 }
-#endif

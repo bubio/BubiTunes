@@ -1,10 +1,9 @@
-#if os(macOS)
 import Foundation
 
 final class PlayerSession {
   private struct Playing {
     let track: VGM
-    let audio: MacPlayback
+    let audio: PlatformPlayback
     var paused = false
   }
 
@@ -114,7 +113,7 @@ final class PlayerSession {
         let frame = resumeFrame ?? 0
         let startFrame = frame < track.duration ? frame : 0
         let paused = resumeFrame != nil
-        let audio = try MacPlayback(track: track, synth: makeSynth(track.clock), startFrame: startFrame) {
+        let audio = try PlatformPlayback(track: track, synth: makeSynth(track.clock), startFrame: startFrame) {
           terminal.shouldQuit
         }
         try audio.refill()
@@ -523,4 +522,3 @@ final class PlayerSession {
     return String(format: "%d:%02d", seconds / 60, seconds % 60)
   }
 }
-#endif

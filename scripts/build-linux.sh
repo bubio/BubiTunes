@@ -10,11 +10,12 @@ case "$arch" in
 esac
 
 swift --version
+swift test -c release
 # Keep the release archive runnable on a Linux host which does not have the
 # Swift toolchain installed. Without this, the executable depends on
 # libswiftCore.so (and the rest of the Swift runtime) from the CI toolchain.
+# Build after the tests: swift test also rebuilds bubitunes with dynamic linking.
 swift build -c release --product bubitunes -Xswiftc -static-stdlib
-swift test -c release
 binary_dir="$(swift build -c release --show-bin-path -Xswiftc -static-stdlib)"
 
 mkdir -p dist

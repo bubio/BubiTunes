@@ -3,3 +3,4 @@
 .DS_Store
 # Local override builds can resolve only the Core clone’s dependencies.
 Package.resolved
+dist/

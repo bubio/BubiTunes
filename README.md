@@ -90,6 +90,29 @@ BUBITUNES_CORE_DIR=../Bubilator88Core swift test
 BUBITUNES_CORE_DIR=../Bubilator88Core swift run bubitunes track.vgz
 ```
 
+To build the same Release package as CI, install Swift 6.4.3 and run the
+script for your platform from the project directory:
+
+| Platform | Command |
+| --- | --- |
+| macOS | `bash scripts/build-macos.sh` |
+| Linux | `bash scripts/build-linux.sh` |
+| Windows (PowerShell) | `./scripts/build-windows.ps1` |
+
+Each script builds `bubitunes`, runs the Release tests, checks `--help`, and
+packages the executable, rhythm samples and notices under `dist/`. Windows
+packages include the Swift runtime DLLs; macOS packages are ad-hoc signed.
+The package targets the current platform and architecture. Linux needs zlib
+development headers and pkg-config (`sudo apt-get install zlib1g-dev pkg-config`).
+`BUBITUNES_CORE_DIR` also works with these scripts; leave it unset to use the
+published Core dependency as CI does.
+
+CI has separate Linux, macOS and Windows workflows. Pull requests and pushes
+to `main` run only when build inputs, tests, packaged assets, or that platform's
+build script or workflow change. Documentation-only changes do not start builds.
+Successful `main` builds upload platform archives as Actions
+artifacts. A `v*` tag also builds and publishes the macOS release.
+
 BubiTunes is distributed under GPL v2. The OPNA synthesis includes work based
 on cisc's fmgen. See [FMGEN-NOTICE.txt](FMGEN-NOTICE.txt). The six substitute
 rhythm WAV files originate from the Bubilator88 project.

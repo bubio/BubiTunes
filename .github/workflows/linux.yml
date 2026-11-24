@@ -1,0 +1,53 @@
+name: Linux CI
+
+on:
+  push:
+    branches: [main]
+    paths: &build-paths
+      - 'Package.swift'
+      - 'Package.resolved'
+      - 'Sources/BubiTunesCLI/**'
+      - 'Sources/BubiTunesPlayer/**'
+      - '!Sources/BubiTunesPlayer/MacPlayback.swift'
+      - '!Sources/BubiTunesPlayer/TerminalWindows.swift'
+      - 'Sources/CMinAudio/**'
+      - 'Sources/CZlib/**'
+      - 'Tests/**'
+      - 'BubiTunesRhythm/**'
+      - 'LICENSE'
+      - 'FMGEN-NOTICE.txt'
+      - 'scripts/build-linux.sh'
+      - '.github/workflows/linux.yml'
+  pull_request:
+    paths: *build-paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            binutils git gnupg2 libc6-dev libcurl4-openssl-dev libedit2 \
+            libgcc-11-dev libpython3.10 libsqlite3-0 libstdc++-11-dev \
+            libxml2-dev libz3-dev pkg-config tzdata unzip zlib1g-dev
+      - name: Install Swift 6.4.3
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/swift.tar.gz" https://download.swift.org/swift-6.4.3-release/ubuntu2204/swift-6.4.3-RELEASE/swift-6.4.3-RELEASE-ubuntu22.04.tar.gz
+          sudo mkdir -p /opt/swift
+          sudo tar -xzf "$RUNNER_TEMP/swift.tar.gz" -C /opt/swift --strip-components=1
+          echo "/opt/swift/usr/bin" >> "$GITHUB_PATH"
+      - name: Build, test and package
+        run: bash scripts/build-linux.sh
+      - uses: actions/upload-artifact@v7
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: BubiTunes-linux-x64
+          path: dist/BubiTunes-linux-x64.tar.gz
+          if-no-files-found: error

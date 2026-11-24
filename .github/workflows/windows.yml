@@ -1,0 +1,46 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+    paths: &build-paths
+      - 'Package.swift'
+      - 'Package.resolved'
+      - 'Sources/BubiTunesCLI/**'
+      - 'Sources/BubiTunesPlayer/**'
+      - '!Sources/BubiTunesPlayer/MacPlayback.swift'
+      - '!Sources/BubiTunesPlayer/Terminal.swift'
+      - 'Sources/CMinAudio/**'
+      - 'Sources/CZlibVendored/**'
+      - 'Tests/**'
+      - 'BubiTunesRhythm/**'
+      - 'LICENSE'
+      - 'FMGEN-NOTICE.txt'
+      - 'scripts/build-windows.ps1'
+      - '.github/workflows/windows.yml'
+  pull_request:
+    paths: *build-paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Swift 6.4.3
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: '6.4.3'
+      - name: Build, test and package
+        shell: pwsh
+        run: |
+          ./scripts/build-windows.ps1
+      - uses: actions/upload-artifact@v7
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: BubiTunes-windows-x64
+          path: dist/BubiTunes-windows-x64.zip
+          if-no-files-found: error

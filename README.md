@@ -101,9 +101,11 @@ script for your platform from the project directory:
 
 Each script builds `bubitunes`, runs the Release tests, checks `--help`, and
 packages the executable, rhythm samples and notices under `dist/`. Windows
-packages include the Swift runtime DLLs; macOS packages are ad-hoc signed.
-The package targets the current platform and architecture. Linux needs zlib
-development headers and pkg-config (`sudo apt-get install zlib1g-dev pkg-config`).
+packages include the Swift runtime DLLs, Linux packages statically link the
+Swift standard library, and macOS packages are ad-hoc signed. The package
+targets the current platform and architecture. Linux needs zlib development
+headers and pkg-config (`sudo apt-get install zlib1g-dev pkg-config`) to build;
+running the packaged Linux binary does not require a Swift installation.
 `BUBITUNES_CORE_DIR` also works with these scripts; leave it unset to use the
 published Core dependency as CI does.
 

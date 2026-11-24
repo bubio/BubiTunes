@@ -10,9 +10,12 @@ case "$arch" in
 esac
 
 swift --version
-swift build -c release --product bubitunes
+# Keep the release archive runnable on a Linux host which does not have the
+# Swift toolchain installed. Without this, the executable depends on
+# libswiftCore.so (and the rest of the Swift runtime) from the CI toolchain.
+swift build -c release --product bubitunes -Xswiftc -static-stdlib
 swift test -c release
-binary_dir="$(swift build -c release --show-bin-path)"
+binary_dir="$(swift build -c release --show-bin-path -Xswiftc -static-stdlib)"
 
 mkdir -p dist
 stage="$(mktemp -d "$PWD/dist/.stage-linux-XXXXXXXX")"
@@ -20,6 +23,10 @@ trap 'rm -rf -- "$stage"' EXIT
 cp "$binary_dir/bubitunes" "$stage/"
 cp -R BubiTunesRhythm README.md LICENSE FMGEN-NOTICE.txt "$stage/"
 "$stage/bubitunes" --help
+if ldd "$stage/bubitunes" | grep -q 'libswift[^[:space:]]*\.so'; then
+  echo 'The packaged binary still depends on the Swift shared runtime.' >&2
+  exit 1
+fi
 tar -czf "$stage/package.tar.gz" -C "$stage" bubitunes BubiTunesRhythm README.md LICENSE FMGEN-NOTICE.txt
 archive="$PWD/dist/BubiTunes-linux-$arch.tar.gz"
 mv -f "$stage/package.tar.gz" "$archive"

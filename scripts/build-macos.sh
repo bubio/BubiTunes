@@ -15,7 +15,9 @@ mkdir -p dist
 stage="$(mktemp -d "$PWD/dist/.stage-macos-XXXXXXXX")"
 trap 'rm -rf -- "$stage"' EXIT
 cp "$binary_dir/bubitunes" "$stage/"
-cp -R BubiTunesRhythm README.md LICENSE FMGEN-NOTICE.txt "$stage/"
+mkdir "$stage/BubiTunesRhythm"
+cp BubiTunesRhythm/*.wav "$stage/BubiTunesRhythm/"
+cp README.md LICENSE FMGEN-NOTICE.txt "$stage/"
 codesign --force --sign - "$stage/bubitunes"
 codesign --verify --strict "$stage/bubitunes"
 "$stage/bubitunes" --help

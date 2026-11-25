@@ -23,8 +23,8 @@ try {
     # The test build links dynamically. Rebuild the executable with Swift's
     # static libraries after the default build and test suite finish.
     $standaloneFlags = @('--build-system', 'native', '-c', 'release', '-Xswiftc', '-static-stdlib')
-    Invoke-Swift build @static --product bubitunes
-    $binaryDir = (Invoke-Swift build @static --show-bin-path | Out-String).Trim()
+    Invoke-Swift build @standaloneFlags --product bubitunes
+    $binaryDir = (Invoke-Swift build @standaloneFlags --show-bin-path | Out-String).Trim()
     $outputDir = Join-Path $projectRoot 'dist'
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
     $stage = Join-Path $outputDir ('.stage-windows-' + [guid]::NewGuid())

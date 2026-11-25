@@ -8,6 +8,10 @@ BubiTunes is distributed as a standalone CLI for Apple Silicon Macs running
 macOS 15 or later. Extract the BubiTunes release archive and keep
 `BubiTunesRhythm` next to the CLI.
 
+For Windows x64, extract `BubiTunes-windows-x64-SingleFile.zip` and run
+`bubitunes.exe` from a terminal. The EXE includes the Swift runtime and
+substitute rhythm samples.
+
 ```sh
 ./bubitunes "track 1.vgz" "track 2.vgm"
 ```

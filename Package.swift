@@ -43,7 +43,13 @@ let package = Package(
     .target(name: "BubiTunesPlayer", dependencies: ["CZlib", "CMinAudio"]),
     .executableTarget(name: "BubiTunesCLI", dependencies: [
       "BubiTunesPlayer", "CMinAudio", .product(name: "Bubilator88Core", package: "Bubilator88Core"),
+      .target(name: "BubiTunesRhythmData", condition: .when(platforms: [.windows])),
     ]),
+    .target(
+      name: "BubiTunesRhythmData",
+      path: "BubiTunesRhythm",
+      resources: ["BD", "SD", "TOP", "HH", "TOM", "RIM"].map { .embedInCode("Rhythm_\($0).wav") }
+    ),
     .testTarget(name: "BubiTunesPlayerTests", dependencies: ["BubiTunesPlayer"]),
   ]
 )

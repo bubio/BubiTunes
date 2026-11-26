@@ -21,9 +21,11 @@ final class PlayerSession {
   private var started = false
   private var keepOpen: Bool
   private var activityUntil = [0, 0, 0, 0]
+  private var spectrumMotion = SpectrumMotion()
   private var slashFromQueue = false
   private var commandHelp = false
   private let queueAtLaunch: SavedQueue?
+  private var playingPath: String? { playing != nil && queue.indices.contains(index) ? queue[index] : nil }
 
   private static let parts: [OPNAActivity] = [.fm, .ssg, .rhythm, .adpcm]
 
@@ -76,7 +78,7 @@ final class PlayerSession {
     }
 
     while !terminal.shouldQuit {
-      browser.refresh()
+      browser.refresh(playingPath: playingPath)
       if playing == nil { startNextTrack() }
       if terminal.shouldQuit { break }
       if let playing {
@@ -120,10 +122,12 @@ final class PlayerSession {
         audio.volume = preferences.volume
         if !paused { audio.play() }
         activityUntil = [0, 0, 0, 0]
+        spectrumMotion = SpectrumMotion()
         playing = Playing(track: track, audio: audio, paused: paused)
         resumeFrame = nil
         started = true
         browser.recordPlay(url.path)
+        browser.revealTrack(url.path)
         return
       } catch is CancellationError {
         return
@@ -195,7 +199,10 @@ final class PlayerSession {
     case .byte(114): if browser.view != nil { browser.rescan() }
     case .byte(80):
       browser.toggleQueue()
-      if browser.view != nil { keepOpen = true }
+      if browser.view != nil {
+        keepOpen = true
+        if let playingPath { browser.revealTrack(playingPath) }
+      }
     case .byte(83):
       playCollection(browser.view == nil ? queue : browser.collectionPaths, shuffled: true)
     case .byte(82):
@@ -398,7 +405,10 @@ final class PlayerSession {
 
   private func show(_ view: LibraryBrowser.View, preservingView: Bool = false) {
     keepOpen = true
-    if !preservingView || browser.view == nil { browser.open(view) }
+    if !preservingView || browser.view == nil {
+      browser.open(view)
+      if let playingPath { browser.revealTrack(playingPath) }
+    }
   }
 
   private func setVolume(_ value: Float) {
@@ -409,6 +419,7 @@ final class PlayerSession {
   private func screen() -> String {
     let size = terminal.viewport
     let now = nowPlaying()
+    let playingPath = self.playingPath
     let browsing = browser.view != nil
     let commands = browser.completions
     let listTitle: String
@@ -426,15 +437,18 @@ final class PlayerSession {
       selection = browser.selection
       entry = { position in
         let row = self.browser.rows[position]
-        return .init(name: terminalText(row.title), detail: terminalText(row.detail))
+        return .init(name: terminalText(row.title), detail: terminalText(row.detail),
+                     isTrack: row.path != nil, current: playingPath != nil && row.path == playingPath)
       }
     } else {
       listTitle = shuffledQueue ? "Playback queue · Shuffled" : "Playback queue"
       entryCount = queue.count
-      selection = queue.indices.contains(index) ? index : nil
+      let current = playingPath == nil ? nil : index
+      selection = current
       entry = { position in
         let filename = URL(fileURLWithPath: self.queue[position]).lastPathComponent
-        return .init(name: "\(position + 1)  " + terminalText(filename), detail: "")
+        return .init(name: "\(position + 1)  " + terminalText(filename), detail: "",
+                     isTrack: true, current: position == current)
       }
     }
 
@@ -460,16 +474,18 @@ final class PlayerSession {
       prompt: prompt, notice: notice.isEmpty ? nil : terminalText(notice),
       help: commandHelp ? help : nil, completingCommand: !commands.isEmpty,
       browsingLibrary: browser.view == .library,
-      columns: browser.showsColumns && commands.isEmpty ? libraryColumns() : [],
+      columns: browser.showsColumns && commands.isEmpty ? libraryColumns(playingPath: playingPath) : [],
       columnContext: libraryContext()
     ).render(columns: size.columns, rows: size.rows, color: terminal.color)
   }
 
-  private func libraryColumns() -> [PlayerScreen.Column] {
+  private func libraryColumns(playingPath: String?) -> [PlayerScreen.Column] {
     let columns = browser.columns
     return LibraryColumns.Pane.allCases.map { pane in
       .init(title: pane.title, count: columns.count(pane), selected: columns.selection(pane),
-            focused: columns.focus == pane) { index in
+            focused: columns.focus == pane, tracks: pane == .song, isCurrent: { index in
+        pane == .song && columns.songs[index].path == playingPath
+      }) { index in
         switch pane {
         case .artist:
           return index == 0 ? "All artists" : terminalText(columns.artists[index - 1].group.title)
@@ -508,13 +524,20 @@ final class PlayerSession {
     }
     let pcm = playing.paused ? Spectrum.silent : visual.spectrum
     let display = Spectrum(bands: pcm.bands, left: pcm.left * preferences.volume, right: pcm.right * preferences.volume)
+    let uptime = ProcessInfo.processInfo.systemUptime
+    if playing.paused || !preferences.spectrumVisible {
+      spectrumMotion = SpectrumMotion()
+    } else {
+      spectrumMotion.update(with: display, at: uptime)
+    }
+    let shimmer = playing.paused ? nil : uptime.truncatingRemainder(dividingBy: 2.4) / 2.4
     let track = playing.track
     let detail = [track.game, track.artist].filter { !$0.isEmpty }.map(terminalText).joined(separator: "  /  ")
     return .init(title: terminalText(track.title), detail: detail, state: playing.paused ? "Paused" : "Playing",
                  position: time(elapsed), duration: time(track.duration),
                  progress: Double(elapsed) / Double(max(1, track.duration)), volume: volumePercent,
                  looping: track.loop != nil, spectrum: preferences.spectrumVisible ? display : nil, activity: activity,
-                 repeatMode: preferences.repeatMode)
+                 repeatMode: preferences.repeatMode, motion: spectrumMotion, shimmer: shimmer)
   }
 
   private func time(_ frames: Int) -> String {

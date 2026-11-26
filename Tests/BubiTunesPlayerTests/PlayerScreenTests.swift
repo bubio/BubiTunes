@@ -56,3 +56,32 @@ import Testing
     #expect(rendered.split(separator: "\n").allSatisfy { terminalCellWidth(String($0)) <= width })
   }
 }
+
+@Test func playbackHighlightStaysOnTheCurrentTrackWhileBrowsing() throws {
+  var screen = PlayerScreen(
+    now: .init(title: "夜のテーマ 🎵", detail: "", state: "Playing", position: "0:01",
+               duration: "0:30", progress: 0.03, volume: 80, looping: false, spectrum: nil,
+               activity: [], shimmer: 0.5),
+    listTitle: "Library", entryCount: 2, entry: { index in
+      .init(name: index == 0 ? "夜のテーマ 🎵" : "Next track", detail: "", isTrack: true, current: index == 0)
+    }, selection: 1, chooser: true, emptyMessage: "No tracks", prompt: nil, notice: nil, help: nil
+  )
+
+  let animated = screen.render(columns: 80, rows: 24, color: true)
+  let highlightedRow = try #require(animated.split(separator: "\n").first { $0.contains("› ") })
+  let cursorRow = try #require(animated.split(separator: "\n").first { $0.contains("▹ ") })
+  #expect(highlightedRow.contains("38;5;231;48;5;24m"))
+  #expect(!cursorRow.contains("48;5;24m"))
+  let plain = screen.render(columns: 80, rows: 24, color: false)
+  #expect(plain.contains("› 夜のテーマ 🎵"))
+  #expect(plain.contains("▹ Next track"))
+  screen.now.shimmer = 0.2
+  #expect(screen.render(columns: 80, rows: 24, color: true) != animated)
+  #expect(screen.render(columns: 80, rows: 24, color: false) == plain)
+
+  screen.now.state = "Paused"
+  screen.now.shimmer = nil
+  let paused = screen.render(columns: 80, rows: 24, color: true)
+  #expect(paused.contains("48;5;24m"))
+  #expect(!paused.contains("38;5;231;"))
+}

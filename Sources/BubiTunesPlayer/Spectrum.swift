@@ -47,11 +47,13 @@ struct Spectrum: Sendable {
     return Spectrum(bands: bands, left: left, right: right)
   }
 
-  static func level(_ amplitude: Float) -> Int {
+  static func height(_ amplitude: Float) -> Float {
     guard amplitude > 0 else { return 0 }
     let dB = 20 * log10(amplitude)
-    return Int(min(8, max(0, (dB + 60) / 7.5)))
+    return min(1, max(0, (dB + 60) / 60))
   }
+
+  static func level(_ amplitude: Float) -> Int { Int(height(amplitude) * 8) }
 
   private static func power(_ pcm: [Float], channel: Int, frames: Int) -> [Float] {
     var real = [Float](repeating: 0, count: size)
@@ -80,6 +82,35 @@ struct Spectrum: Sendable {
       width *= 2
     }
     return (0..<(size / 2)).map { real[$0] * real[$0] + imaginary[$0] * imaginary[$0] }
+  }
+}
+
+struct SpectrumMotion {
+  struct Band {
+    var height: Float = 0
+    var peak: Float = 0
+    fileprivate var holdUntil = 0.0
+  }
+
+  private(set) var bands = Spectrum.silent.bands.map { _ in Band() }
+  private var lastUpdate: Double?
+
+  mutating func update(with spectrum: Spectrum, at time: Double) {
+    let elapsed = Float(time - (lastUpdate ?? time))
+    lastUpdate = time
+    for index in bands.indices {
+      let target = Spectrum.height(spectrum.bands[index])
+      var band = bands[index]
+      band.height = max(target, band.height - 2.8 * elapsed)
+      if target > 0 && target >= band.peak {
+        band.peak = target
+        band.holdUntil = time + 0.35
+      } else {
+        let fallTime = min(elapsed, Float(max(0, time - band.holdUntil)))
+        band.peak = max(band.height, band.peak - 1.6 * fallTime)
+      }
+      bands[index] = band
+    }
   }
 }
 

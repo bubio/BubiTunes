@@ -26,6 +26,10 @@ struct LibraryColumns {
 
   var selectedSong: LibraryTrack? { songs.indices.contains(song) ? songs[song] : nil }
 
+  mutating func selectSong(atPath path: String) {
+    if let index = songs.firstIndex(where: { $0.path == path }) { song = index }
+  }
+
   func count(_ pane: Pane) -> Int {
     switch pane {
     case .artist: artists.count + 1

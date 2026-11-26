@@ -13,11 +13,15 @@ struct PlayerScreen {
     var spectrum: Spectrum?
     var activity: OPNAActivity
     var repeatMode: QueueRepeatMode = .off
+    var motion = SpectrumMotion()
+    var shimmer: Double?
   }
 
   struct Entry {
     let name: String
     let detail: String
+    var isTrack = false
+    var current = false
   }
 
   struct Column {
@@ -25,6 +29,8 @@ struct PlayerScreen {
     let count: Int
     let selected: Int?
     let focused: Bool
+    var tracks = false
+    var isCurrent: (Int) -> Bool = { _ in false }
     let label: (Int) -> String
   }
 
@@ -65,7 +71,7 @@ struct PlayerScreen {
       output.append("")
       output.append(contentsOf: deck)
     } else {
-      output.append(canvas.line(canvas.text(now.title, .light, bold: true), on: .panel))
+      output.append(canvas.line(trackTitle(canvas, width: width), on: .panel))
       output.append(canvas.line(canvas.text("\(now.state)  \(now.position)  Vol \(now.volume)%  \(now.repeatMode.label)", .mint), on: .panel))
     }
 
@@ -96,14 +102,11 @@ struct PlayerScreen {
     let status = canvas.text("\(now.state)   Vol \(now.volume)%", .mint, bold: true)
     let progress = bar(canvas, progress: now.progress, width: max(1, width - time.width - 2)) + canvas.text("  ") + time
     let details = !showDetail || now.detail.isEmpty ? [] : [canvas.text(now.detail, .muted)]
-    let display = now.spectrum.map { spectrum in
-      let glyphs = Array("·▁▂▃▄▅▆▇█")
-      let values = String(spectrum.bands.map { glyphs[Spectrum.level($0)] })
-      return canvas.text(values, .aqua, bold: true) + canvas.text("    ") + activity(canvas)
-    } ?? activity(canvas)
+    let display = now.spectrum == nil ? activity(canvas) :
+      spectrumRow(canvas, row: 0, rows: 1, barWidth: 1) + canvas.text("  ") + activity(canvas)
     return canvas.panel("Now playing", width: canvas.width, rows: [
       canvas.balance(status, modeStatus(canvas), width: width),
-      canvas.text(now.title, .light, bold: true),
+      trackTitle(canvas, width: width),
     ] + details + [progress, display])
   }
 
@@ -114,7 +117,7 @@ struct PlayerScreen {
       canvas.balance(canvas.text(" \(symbol) \(now.state) ", .ink, on: stateColor, bold: true),
                      canvas.text(now.looping ? "LOOP ×1" : "", .amber), width: width),
       canvas.balance([], repeatStatus(canvas), width: width),
-      canvas.text("▌ ", .violet, bold: true) + canvas.text(now.title, .light, bold: true),
+      canvas.text("▌ ", .violet, bold: true) + trackTitle(canvas, width: width - 2),
       canvas.text(now.detail, .muted),
       [],
       bar(canvas, progress: now.progress, width: width),
@@ -122,6 +125,10 @@ struct PlayerScreen {
                      canvas.text("Vol \(now.volume)%", .mint), width: width),
       key(canvas, "Space", "Pause / Play") + canvas.text("  ") + key(canvas, "←  →", "Track"),
     ]
+  }
+
+  private func trackTitle(_ canvas: Canvas, width: Int) -> Line {
+    canvas.shimmer(now.title, phase: now.shimmer, width: width, base: .light)
   }
 
   private func modeStatus(_ canvas: Canvas) -> Line {
@@ -135,31 +142,50 @@ struct PlayerScreen {
 
   private func visualizer(_ canvas: Canvas, width: Int) -> [Line] {
     let meterRows = 5
-    let peak = now.spectrum ?? .silent
+    let bands = now.motion.bands.count
+    let barWidth = max(1, (width + 1) / bands - 1)
+    let graphWidth = bands * (barWidth + 1) - 1
     var output = (0..<meterRows).map { row -> Line in
-      let level = meterRows - row
       if now.spectrum == nil {
         return row == 2 ? canvas.text("Spectrum off   /spectrum on", .muted) : []
       }
-      let barWidth = min(5, max(1, width / peak.bands.count - 1))
-      let tones: [Tone] = [.amber, .violet, .blue, .aqua, .mint]
-      let columns = peak.bands.map { amplitude -> Line in
-        let steps = Int((Double(Spectrum.level(amplitude)) * 1.25).rounded())
-        let remaining = steps - (level - 1) * 2
-        let glyph = remaining >= 2 ? "█" : remaining == 1 ? "▄" : "·"
-        return canvas.text(String(repeating: glyph, count: barWidth), remaining > 0 ? tones[row] : .grid)
-      }
-      return columns.dropFirst().reduce(columns.first ?? []) { $0 + canvas.text(" ") + $1 }
+      return spectrumRow(canvas, row: row, rows: meterRows, barWidth: barWidth)
     }
-    output.append(canvas.balance(canvas.text("LOW", .muted), canvas.text("HIGH", .muted), width: width))
+    output.append(now.spectrum == nil ? [] :
+      canvas.balance(canvas.text("LOW", .muted), canvas.text("HIGH", .muted), width: graphWidth))
     let meterWidth = min(12, max(4, (width - 9) / 2))
-    func meter(_ channel: String, _ value: Float) -> Line {
-      canvas.text(channel + " ", .light, bold: true) +
-        bar(canvas, progress: Double(Spectrum.level(value)) / 8, width: meterWidth)
+    if let spectrum = now.spectrum {
+      output.append(stereoMeter(canvas, channel: "L", amplitude: spectrum.left, width: meterWidth) +
+        canvas.text("   ") + stereoMeter(canvas, channel: "R", amplitude: spectrum.right, width: meterWidth))
+    } else {
+      output.append([])
     }
-    output.append(meter("L", peak.left) + canvas.text("   ") + meter("R", peak.right))
     output.append(activity(canvas))
     return output
+  }
+
+  private func spectrumRow(_ canvas: Canvas, row: Int, rows: Int, barWidth: Int) -> Line {
+    let glyphs = Array(" ▁▂▃▄▅▆▇█")
+    let tones: [Tone] = [.pink, .violet, .blue, .aqua, .mint]
+    let offset = (rows - 1 - row) * 8
+    return now.motion.bands.enumerated().flatMap { index, band -> Line in
+      let height = Int((band.height * Float(rows * 8)).rounded())
+      let peak = Int((band.peak * Float(rows * 8)).rounded())
+      let hasPeak = peak > offset && peak <= offset + 8
+      let fill = max(0, min(8, height - offset))
+      let glyph: Character = fill > 0 ? glyphs[fill] : hasPeak ? "━" : row == rows - 1 ? "┈" : "·"
+      let tone = hasPeak ? .peak : fill > 0 ? (rows == 1 ? .aqua : tones[row]) : .grid
+      return canvas.text(index == 0 ? "" : " ") +
+        canvas.text(String(repeating: glyph, count: barWidth), tone)
+    }
+  }
+
+  private func stereoMeter(_ canvas: Canvas, channel: String, amplitude: Float, width: Int) -> Line {
+    let filled = Int((Spectrum.height(amplitude) * Float(width)).rounded())
+    return canvas.text(channel + " ", .light, bold: true) + (0..<width).flatMap { index -> Line in
+      let tone: Tone = index >= width - 2 ? .amber : index >= width - 5 ? .aqua : .mint
+      return canvas.text(index < filled ? "▪" : "╌", index < filled ? tone : .grid)
+    }
   }
 
   private func activity(_ canvas: Canvas) -> Line {
@@ -198,10 +224,12 @@ struct PlayerScreen {
     let selected = column.selected ?? 0
     let start = max(0, min(selected - count / 2, column.count - count))
     var lines = (start..<min(column.count, start + count)).map { index -> Line in
-      let active = index == column.selected
-      let background: Tone = active ? .selected : .panel
-      let marker = canvas.text(active ? "› " : "  ", column.focused ? .mint : .violet, on: background, bold: active)
-      let item = canvas.text(column.label(index), active ? .light : .muted, on: background, bold: active)
+      let current = column.isCurrent(index)
+      let style = rowStyle(canvas, current: current, selected: index == column.selected,
+                           track: column.tracks, focused: column.focused)
+      let (marker, background) = (style.marker, style.background)
+      let item = rowName(column.label(index), canvas: canvas, width: limit - marker.width,
+                         current: current, background: background)
       return canvas.fit(marker + item, limit: limit, on: background)
     }
     if lines.isEmpty && count > 0 {
@@ -222,8 +250,8 @@ struct PlayerScreen {
     let width = canvas.width
     let count = help == nil && entryCount > 0 ? "  \(entryCount)" : ""
     let title = help == nil ? listTitle + count : "Slash commands"
-    let content = width >= 25 ? width - 4 : width
     let framed = width >= 25 && height >= 3
+    let content = framed ? width - 4 : width
     let available = max(0, height - (framed ? 2 : 1))
     let lines: [Line]
     if let help {
@@ -235,12 +263,12 @@ struct PlayerScreen {
       let start = max(0, min(position - available / 2, entryCount - available))
       lines = (start..<min(entryCount, start + available)).map { index in
         let row = entry(index)
-        let active = selection == index
-        let background: Tone = active ? .selected : .panel
+        let style = rowStyle(canvas, current: row.current, selected: selection == index, track: row.isTrack)
+        let (marker, background) = (style.marker, style.background)
         let detailsWidth = content >= 60 && !row.detail.isEmpty ? content / 3 : 0
         let nameWidth = content - (detailsWidth == 0 ? 0 : detailsWidth + 2)
-        let marker = canvas.text(active ? "› " : "  ", active ? .mint : .muted, on: background, bold: active)
-        let name = canvas.text(row.name, active ? .light : .muted, on: background, bold: active)
+        let name = rowName(row.name, canvas: canvas, width: nameWidth - marker.width,
+                           current: row.current, background: background)
         var line = canvas.fit(marker + name, limit: nameWidth, on: background)
         if detailsWidth > 0 {
           line += canvas.text("  ", .muted, on: background)
@@ -255,6 +283,26 @@ struct PlayerScreen {
     }
     return [canvas.line(canvas.text(" " + title, .violet, bold: true), on: .panel)] +
       padded.map { canvas.line($0, on: .panel) }
+  }
+
+  private func rowStyle(_ canvas: Canvas, current: Bool, selected: Bool, track: Bool,
+                        focused: Bool = true) -> (marker: Line, background: Tone) {
+    if current {
+      return (canvas.text("› ", .mint, on: .playingRow, bold: true), .playingRow)
+    }
+    let background: Tone = selected ? .selected : .panel
+    let cursor = track && now.state != "Stopped" ? "▹ " : "› "
+    let marker = canvas.text(selected ? cursor : "  ", focused ? .mint : .violet,
+                             on: background, bold: selected)
+    return (marker, background)
+  }
+
+  private func rowName(_ name: String, canvas: Canvas, width: Int, current: Bool, background: Tone) -> Line {
+    if current {
+      return canvas.shimmer(name, phase: now.shimmer, width: width, base: .sky, on: background)
+    }
+    let selected = background == .selected
+    return canvas.text(name, selected ? .light : .muted, on: background, bold: selected)
   }
 
   private func keybar(_ canvas: Canvas) -> [String] {
@@ -305,9 +353,10 @@ struct PlayerScreen {
 }
 
 private enum Tone: Int {
-  case background = 233, panel = 234, header = 235, selected = 237, ink = 16
+  case background = 233, panel = 234, header = 235, selected = 237, playingRow = 24, ink = 16
   case grid = 60, muted = 250, light = 255
   case violet = 141, blue = 111, aqua = 80, mint = 121, amber = 221
+  case pink = 213, sky = 153, peak = 159, shine = 231
 }
 
 private struct Span {
@@ -329,6 +378,28 @@ private struct Canvas {
 
   func text(_ label: String, _ tone: Tone = .light, on paper: Tone? = nil, bold: Bool = false) -> Line {
     label.isEmpty ? [] : [Span(text: label, ink: tone, paper: paper, bold: bold)]
+  }
+
+  func shimmer(_ label: String, phase: Double?, width: Int, base: Tone, on paper: Tone? = nil) -> Line {
+    let clipped = truncate(text(label, base, on: paper, bold: true), limit: width)
+    guard color, let phase, !clipped.isEmpty else { return clipped }
+    let sweepWidth = Double(max(3, min(8, clipped.width / 3)))
+    let center = phase * (Double(clipped.width) + 2 * sweepWidth) - sweepWidth
+    var result: Line = []
+    var position = 0
+    for character in clipped.map(\.text).joined() {
+      let text = String(character)
+      let cells = terminalCellWidth(text)
+      let distance = abs(Double(position) + Double(cells) / 2 - center) / sweepWidth
+      let tone: Tone = distance < 0.35 ? .shine : distance < 0.72 ? .peak : distance < 1 ? .sky : base
+      if result.last?.ink == tone, let last = result.popLast() {
+        result.append(Span(text: last.text + text, ink: tone, paper: paper, bold: true))
+      } else {
+        result.append(Span(text: text, ink: tone, paper: paper, bold: true))
+      }
+      position += cells
+    }
+    return result
   }
 
   func balance(_ left: Line, _ right: Line, width: Int) -> Line {

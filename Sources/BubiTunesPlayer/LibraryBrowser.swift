@@ -140,6 +140,15 @@ final class LibraryBrowser {
     }
   }
 
+  func revealTrack(_ path: String) {
+    guard view != nil, prompt == nil else { return }
+    if showsColumns {
+      columns.selectSong(atPath: path)
+    } else if let index = rows.firstIndex(where: { $0.path == path }) {
+      selection = index
+    }
+  }
+
   func moveColumn(_ offset: Int, wrap: Bool = false) {
     columns.focusBy(offset, wrap: wrap)
   }
@@ -319,7 +328,7 @@ final class LibraryBrowser {
     }
   }
 
-  func refresh() {
+  func refresh(playingPath: String?) {
     let result = mailbox.result.withLock { value in
       let result = value
       value = nil
@@ -331,6 +340,7 @@ final class LibraryBrowser {
     byPath = Dictionary(uniqueKeysWithValues: indexed.map { ($0.path, $0) })
     scanning = false
     rebuildRows()
+    if let playingPath { revealTrack(playingPath) }
   }
 
   private func update(_ change: (inout Library) throws -> Void) -> Bool {

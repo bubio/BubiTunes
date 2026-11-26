@@ -64,3 +64,19 @@ import Testing
   #expect(afterSilence.bands[0] > afterPeak.bands[0])
   #expect(Spectrum.level(afterSilence.bands[0]) < 8)
 }
+
+@Test func spectrumPeakHoldsAsTheBarFallsThenDecays() throws {
+  var motion = SpectrumMotion()
+  let signal = Spectrum(bands: Spectrum.silent.bands.map { _ in 1 }, left: 0, right: 0)
+  motion.update(with: signal, at: 1)
+  motion.update(with: .silent, at: 1.2)
+  let held = try #require(motion.bands.first)
+  #expect(held.height < 0.5)
+  #expect(held.peak == 1)
+  motion.update(with: .silent, at: 1.5)
+  let falling = try #require(motion.bands.first)
+  #expect(falling.height == 0)
+  #expect(falling.peak > 0 && falling.peak < held.peak)
+  motion.update(with: .silent, at: 2.1)
+  #expect(motion.bands.allSatisfy { $0.peak == 0 })
+}

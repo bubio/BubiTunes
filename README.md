@@ -11,6 +11,8 @@ a single YM2608 (OPNA). It uses [Bubilator88Core](https://github.com/bubio/Bubil
 for sound synthesis. Substitute rhythm samples are built into the executable,
 and playback requires no PC-88 BIOS files.
 
+![BubiTunes playing a track in the terminal, with the OPNA spectrum and the current song highlighted in the library](docs/images/bubitunes.png)
+
 ## Features
 
 - Play one or more files directly or browse a library indexed by artist and game.

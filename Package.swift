@@ -41,9 +41,12 @@ let package = Package(
       ]
     ),
     .target(name: "BubiTunesPlayer", dependencies: ["CZlib", "CMinAudio"]),
-    .executableTarget(name: "BubiTunesCLI", dependencies: [
-      "BubiTunesPlayer", "CMinAudio", .product(name: "Bubilator88Core", package: "Bubilator88Core"),
-    ]),
+    .executableTarget(
+      name: "BubiTunesCLI",
+      dependencies: [
+        "BubiTunesPlayer", "CMinAudio", .product(name: "Bubilator88Core", package: "Bubilator88Core"),
+      ],
+    ),
     .testTarget(name: "BubiTunesPlayerTests", dependencies: ["BubiTunesPlayer"]),
   ]
 )

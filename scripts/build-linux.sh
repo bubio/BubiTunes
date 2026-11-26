@@ -22,13 +22,13 @@ mkdir -p dist
 stage="$(mktemp -d "$PWD/dist/.stage-linux-XXXXXXXX")"
 trap 'rm -rf -- "$stage"' EXIT
 cp "$binary_dir/bubitunes" "$stage/"
-cp -R BubiTunesRhythm README.md LICENSE FMGEN-NOTICE.txt "$stage/"
+cp README.md LICENSE FMGEN-NOTICE.txt "$stage/"
 "$stage/bubitunes" --help
 if ldd "$stage/bubitunes" | grep -q 'libswift[^[:space:]]*\.so'; then
   echo 'The packaged binary still depends on the Swift shared runtime.' >&2
   exit 1
 fi
-tar -czf "$stage/package.tar.gz" -C "$stage" bubitunes BubiTunesRhythm README.md LICENSE FMGEN-NOTICE.txt
+tar -czf "$stage/package.tar.gz" -C "$stage" bubitunes README.md LICENSE FMGEN-NOTICE.txt
 archive="$PWD/dist/BubiTunes-linux-$arch.tar.gz"
 mv -f "$stage/package.tar.gz" "$archive"
 echo "Package: $archive"

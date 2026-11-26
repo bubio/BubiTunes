@@ -5,8 +5,8 @@ BubiTunes plays PC-88 YM2608 (OPNA) VGM and VGZ files in a terminal. It uses
 includes substitute OPNA rhythm samples. It runs without PC-88 BIOS files.
 
 BubiTunes is distributed as a standalone CLI for Apple Silicon Macs running
-macOS 15 or later. Extract the BubiTunes release archive and keep
-`BubiTunesRhythm` next to the CLI.
+macOS 15 or later. The substitute rhythm samples are embedded in the
+executable, so extract the release archive and run the CLI directly.
 
 ```sh
 ./bubitunes "track 1.vgz" "track 2.vgm"
@@ -100,7 +100,8 @@ script for your platform from the project directory:
 | Windows (PowerShell) | `./scripts/build-windows.ps1` |
 
 Each script builds `bubitunes`, runs the Release tests, checks `--help`, and
-packages the executable, rhythm samples and notices under `dist/`. Windows
+packages the executable and notices under `dist/`; the rhythm samples are
+embedded in the executable. Windows
 packages include the Swift runtime DLLs, Linux packages statically link the
 Swift standard library, and macOS packages are ad-hoc signed. The package
 targets the current platform and architecture. Linux needs zlib development

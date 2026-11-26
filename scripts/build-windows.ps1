@@ -28,8 +28,8 @@ try {
     New-Item -ItemType Directory -Path $stage | Out-Null
     try {
         Copy-Item -LiteralPath (Join-Path $binaryDir 'bubitunes.exe') -Destination $stage
-        Copy-Item -LiteralPath 'BubiTunesRhythm' -Destination $stage -Recurse
         Copy-Item -LiteralPath @('README.md', 'LICENSE', 'FMGEN-NOTICE.txt') -Destination $stage
+        if (Test-Path -LiteralPath (Join-Path $stage 'BubiTunesRhythm')) { throw 'Rhythm samples must be linked into bubitunes.exe.' }
 
         # Bundle runtime DLLs, excluding the compiler's own libraries.
         $toolchainBin = Split-Path -Parent (Get-Command swift -CommandType Application).Source

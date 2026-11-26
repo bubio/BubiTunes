@@ -25,26 +25,17 @@ private final class CoreOPNA: OPNASynthesizer {
 }
 
 extension CoreOPNA {
-  /// Loads the substitute OPNA rhythm samples (BubiTunesRhythm/*.wav) with
-  /// miniaudio's decoder, which works on every platform.
+  /// Loads the substitute OPNA rhythm samples linked into the executable.
   private func loadRhythm() throws {
-    let executable = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
-    let directory = executable.deletingLastPathComponent()
-    let candidates = [
-      directory.appendingPathComponent("BubiTunesRhythm"),
-      URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-        .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("BubiTunesRhythm"),
-    ]
-    for (index, name) in ["BD", "SD", "TOP", "HH", "TOM", "RIM"].enumerated() {
-      let filename = "Rhythm_\(name).wav"
-      guard let url = candidates.map({ $0.appendingPathComponent(filename) }).first(where: {
-        FileManager.default.fileExists(atPath: $0.path)
-      }) else {
-        throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: filename])
+    for index in 0..<6 {
+      var byteCount = 0
+      guard let bytes = bubitunes_rhythm_sample(index, &byteCount) else {
+        throw CocoaError(.fileNoSuchFile)
       }
       var decoder = ma_decoder()
       var config = ma_decoder_config_init(ma_format_s16, 1, 0)
-      guard ma_decoder_init_file(url.path, &config, &decoder) == MA_SUCCESS else {
+      let decoderStatus = ma_decoder_init_memory(bytes, byteCount, &config, &decoder)
+      guard decoderStatus == MA_SUCCESS else {
         throw CocoaError(.fileReadCorruptFile)
       }
       defer { ma_decoder_uninit(&decoder) }

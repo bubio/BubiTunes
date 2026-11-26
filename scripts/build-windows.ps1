@@ -17,34 +17,21 @@ try {
     if ($arch -eq 'aarch64') { $arch = 'arm64' }
     # Swift 6.4.0's Swift Build backend loses Swift Testing discovery on Windows.
     # Use the native backend consistently for the product and its tests.
-    Invoke-Swift build --build-system native -c release --product bubitunes
     Invoke-Swift test --build-system native -c release
     $tests = Invoke-Swift test --build-system native -c release --skip-build list | Out-String
     if ([string]::IsNullOrWhiteSpace($tests)) { throw 'No tests were discovered.' }
-    $binaryDir = (Invoke-Swift build --build-system native -c release --show-bin-path | Out-String).Trim()
+    # The test build links dynamically. Rebuild the executable with Swift's
+    # static libraries after the default build and test suite finish.
+    $standaloneFlags = @('--build-system', 'native', '-c', 'release', '-Xswiftc', '-static-stdlib')
+    Invoke-Swift build @standaloneFlags --product bubitunes
+    $binaryDir = (Invoke-Swift build @standaloneFlags --show-bin-path | Out-String).Trim()
     $outputDir = Join-Path $projectRoot 'dist'
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
     $stage = Join-Path $outputDir ('.stage-windows-' + [guid]::NewGuid())
     New-Item -ItemType Directory -Path $stage | Out-Null
     try {
         Copy-Item -LiteralPath (Join-Path $binaryDir 'bubitunes.exe') -Destination $stage
-        Copy-Item -LiteralPath @('README.md', 'LICENSE', 'FMGEN-NOTICE.txt') -Destination $stage
-        if (Test-Path -LiteralPath (Join-Path $stage 'BubiTunesRhythm')) { throw 'Rhythm samples must be linked into bubitunes.exe.' }
-
-        # Bundle runtime DLLs, excluding the compiler's own libraries.
         $toolchainBin = Split-Path -Parent (Get-Command swift -CommandType Application).Source
-        $runtimeDirs = @($targetInfo.paths.runtimeLibraryPaths | Where-Object {
-            [IO.Path]::GetFullPath($_) -ne [IO.Path]::GetFullPath($toolchainBin)
-        })
-        foreach ($directory in (@($binaryDir) + $runtimeDirs)) {
-            if (-not (Test-Path -LiteralPath $directory -PathType Container)) { continue }
-            Get-ChildItem -LiteralPath $directory -Filter '*.dll' -File | ForEach-Object {
-                $destination = Join-Path $stage $_.Name
-                if (-not (Test-Path -LiteralPath $destination)) {
-                    Copy-Item -LiteralPath $_.FullName -Destination $destination
-                }
-            }
-        }
 
         # Verify the packaged runtime without falling back to the installed Swift DLLs.
         $savedPath = $env:PATH
@@ -60,9 +47,8 @@ try {
         }
 
         $temporaryArchive = Join-Path $stage 'package.zip'
-        $contents = @(Get-ChildItem -LiteralPath $stage | ForEach-Object { $_.FullName })
-        Compress-Archive -LiteralPath $contents -DestinationPath $temporaryArchive
-        $archive = Join-Path $outputDir "BubiTunes-windows-$arch.zip"
+        Compress-Archive -LiteralPath (Join-Path $stage 'bubitunes.exe') -DestinationPath $temporaryArchive
+        $archive = Join-Path $outputDir "BubiTunes-windows-$arch-SingleFile.zip"
         Move-Item -LiteralPath $temporaryArchive -Destination $archive -Force
         Write-Host "Package: $archive"
     } finally {

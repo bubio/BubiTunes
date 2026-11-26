@@ -8,6 +8,10 @@ BubiTunes is distributed as a standalone CLI for Apple Silicon Macs running
 macOS 15 or later. The substitute rhythm samples are embedded in the
 executable, so extract the release archive and run the CLI directly.
 
+For Windows x64, extract `bubitunes.exe` from
+`BubiTunes-windows-x64-SingleFile.zip` and run it from a terminal. The EXE
+includes the Swift runtime and substitute rhythm samples.
+
 ```sh
 ./bubitunes "track 1.vgz" "track 2.vgm"
 ```
@@ -100,11 +104,12 @@ script for your platform from the project directory:
 | Windows (PowerShell) | `./scripts/build-windows.ps1` |
 
 Each script builds `bubitunes`, runs the Release tests, checks `--help`, and
-packages the executable and notices under `dist/`; the rhythm samples are
-embedded in the executable. Windows
-packages include the Swift runtime DLLs, Linux packages statically link the
-Swift standard library, and macOS packages are ad-hoc signed. The package
-targets the current platform and architecture. Linux needs zlib development
+packages the executable under `dist/`. The rhythm samples are embedded in the
+executable. The Windows ZIP contains only `bubitunes.exe`, with the Swift
+runtime statically linked. The macOS and Linux archives also include the
+notices. Linux links the Swift standard library statically, and the macOS
+executable is ad-hoc signed. The package targets the current platform and
+architecture. Linux needs zlib development
 headers and pkg-config (`sudo apt-get install zlib1g-dev pkg-config`) to build;
 running the packaged Linux binary does not require a Swift installation.
 `BUBITUNES_CORE_DIR` also works with these scripts; leave it unset to use the
@@ -113,8 +118,10 @@ published Core dependency as CI does.
 CI has separate Linux, macOS and Windows workflows. Pull requests and pushes
 to `main` run only when build inputs, tests, packaged assets, or that platform's
 build script or workflow change. Documentation-only changes do not start builds.
-Successful `main` builds upload platform archives as Actions
-artifacts. A `v*` tag also builds and publishes the macOS release.
+Successful `main` builds upload platform archives as Actions artifacts.
+Windows CI also uploads its ZIP for pull requests and manual runs, then checks
+that the EXE starts on a separate runner without Swift. A `v*` tag also builds
+and publishes the macOS release.
 
 BubiTunes is distributed under GPL v2. The OPNA synthesis includes work based
 on cisc's fmgen. See [FMGEN-NOTICE.txt](FMGEN-NOTICE.txt). The six substitute

@@ -20,6 +20,6 @@ codesign --force --sign - "$stage/bubitunes"
 codesign --verify --strict "$stage/bubitunes"
 "$stage/bubitunes" --help
 tar -czf "$stage/package.tar.gz" -C "$stage" bubitunes README.md LICENSE FMGEN-NOTICE.txt
-archive="$PWD/dist/BubiTunes-macos-$arch.tar.gz"
+archive="$PWD/dist/bubitunes-macos-$arch.tar.gz"
 mv -f "$stage/package.tar.gz" "$archive"
 echo "Package: $archive"

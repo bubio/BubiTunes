@@ -29,6 +29,6 @@ if ldd "$stage/bubitunes" | grep -q 'libswift[^[:space:]]*\.so'; then
   exit 1
 fi
 tar -czf "$stage/package.tar.gz" -C "$stage" bubitunes README.md LICENSE FMGEN-NOTICE.txt
-archive="$PWD/dist/BubiTunes-linux-$arch.tar.gz"
+archive="$PWD/dist/bubitunes-linux-$arch.tar.gz"
 mv -f "$stage/package.tar.gz" "$archive"
 echo "Package: $archive"

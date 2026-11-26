@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths: &build-paths
       - 'Package.swift'
-      - 'Package.resolved'
       - 'Sources/BubiTunesCLI/**'
       - 'Sources/BubiTunesPlayer/**'
       - '!Sources/BubiTunesPlayer/MacPlayback.swift'
@@ -13,7 +12,6 @@ on:
       - 'Sources/CMinAudio/**'
       - 'Sources/CZlib/**'
       - 'Tests/**'
-      - 'BubiTunesRhythm/**'
       - 'LICENSE'
       - 'FMGEN-NOTICE.txt'
       - 'scripts/build-linux.sh'
@@ -21,6 +19,7 @@ on:
   pull_request:
     paths: *build-paths
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -46,8 +45,8 @@ jobs:
       - name: Build, test and package
         run: bash scripts/build-linux.sh
       - uses: actions/upload-artifact@v7
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         with:
-          name: BubiTunes-linux-x64
-          path: dist/BubiTunes-linux-x64.tar.gz
+          name: bubitunes-linux-x64
+          path: dist/bubitunes-linux-x64.tar.gz
           if-no-files-found: error

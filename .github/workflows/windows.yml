@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths: &build-paths
       - 'Package.swift'
-      - 'Package.resolved'
       - 'Sources/BubiTunesCLI/**'
       - 'Sources/BubiTunesPlayer/**'
       - '!Sources/BubiTunesPlayer/MacPlayback.swift'
@@ -13,7 +12,6 @@ on:
       - 'Sources/CMinAudio/**'
       - 'Sources/CZlibVendored/**'
       - 'Tests/**'
-      - 'BubiTunesRhythm/**'
       - 'LICENSE'
       - 'FMGEN-NOTICE.txt'
       - 'scripts/build-windows.ps1'
@@ -21,6 +19,7 @@ on:
   pull_request:
     paths: *build-paths
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -38,10 +37,15 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/build-windows.ps1
+      - name: Prepare the Windows artifact
+        shell: pwsh
+        run: |
+          Expand-Archive -LiteralPath dist/bubitunes-windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/bubitunes-artifact"
       - uses: actions/upload-artifact@v7
         with:
-          path: dist/BubiTunes-windows-x64-SingleFile.zip
-          archive: false
+          name: bubitunes-windows-x64
+          path: ${{ runner.temp }}/bubitunes-artifact
+          include-hidden-files: true
           if-no-files-found: error
 
   standalone:
@@ -51,34 +55,21 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: BubiTunes-windows-x64-SingleFile.zip
-          skip-decompress: true
-      - name: Verify ZIP contents and launch
+          name: bubitunes-windows-x64
+          path: ${{ runner.temp }}/bubitunes-standalone
+      - name: Verify artifact contents and launch
         shell: pwsh
+        working-directory: ${{ runner.temp }}/bubitunes-standalone
         run: |
           if (Get-Command swift.exe, swiftc.exe -ErrorAction SilentlyContinue) {
             throw 'Swift was found on the launch runner.'
           }
-          $zip = Get-Item BubiTunes-windows-x64-SingleFile.zip
-          $archive = [IO.Compression.ZipFile]::OpenRead($zip.FullName)
-          try {
-            if ($archive.Entries.Count -ne 1 -or $archive.Entries[0].FullName -cne 'bubitunes.exe') {
-              throw 'Expected bubitunes.exe as the only file in the ZIP.'
-            }
-          } finally {
-            $archive.Dispose()
+          $entries = @(Get-ChildItem -Force)
+          if ($entries.Count -ne 1 -or $entries[0].Name -cne 'bubitunes.exe' -or $entries[0].PSIsContainer) {
+            throw 'Expected bubitunes.exe as the only file in the artifact.'
           }
-          $destination = Join-Path $env:RUNNER_TEMP 'bubitunes-standalone'
-          Expand-Archive -LiteralPath $zip.FullName -DestinationPath $destination
-          $exe = Join-Path $destination 'bubitunes.exe'
-          Push-Location -LiteralPath $destination
-          try {
-            $help = & $exe --help
-            if ($LASTEXITCODE -ne 0 -or $help -notlike 'Usage: bubitunes *') {
-              throw "The standalone EXE failed to start (exit $LASTEXITCODE)."
-            }
-            Write-Host $help
-          } finally {
-            Pop-Location
+          $help = & ./bubitunes.exe --help
+          if ($LASTEXITCODE -ne 0 -or $help -notlike 'Usage: bubitunes *') {
+            throw "The standalone EXE failed to start (exit $LASTEXITCODE)."
           }
-          Write-Host 'PASS: the ZIP contains only bubitunes.exe, which starts on a Windows x64 runner without Swift.'
+          Write-Host $help

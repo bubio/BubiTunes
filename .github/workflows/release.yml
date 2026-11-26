@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    uses: ./.github/workflows/macos.yml
+
+  linux:
+    uses: ./.github/workflows/linux.yml
+
+  windows:
+    uses: ./.github/workflows/windows.yml
+
+  publish:
+    needs: [macos, linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: bubitunes-macos-arm64
+      - uses: actions/download-artifact@v8
+        with:
+          name: bubitunes-linux-x64
+      - uses: actions/download-artifact@v8
+        with:
+          name: bubitunes-windows-x64
+          path: windows
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          macos_asset="bubitunes-${version}-macos-arm64.tar.gz"
+          linux_asset="bubitunes-${version}-linux-x64.tar.gz"
+          windows_asset="bubitunes-${version}-windows-x64.zip"
+
+          mv -- bubitunes-macos-arm64.tar.gz "$macos_asset"
+          mv -- bubitunes-linux-x64.tar.gz "$linux_asset"
+          zip -j "$windows_asset" windows/bubitunes.exe
+
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
+            "$macos_asset" "$linux_asset" "$windows_asset"

@@ -48,7 +48,7 @@ try {
 
         $temporaryArchive = Join-Path $stage 'package.zip'
         Compress-Archive -LiteralPath (Join-Path $stage 'bubitunes.exe') -DestinationPath $temporaryArchive
-        $archive = Join-Path $outputDir "BubiTunes-windows-$arch-SingleFile.zip"
+        $archive = Join-Path $outputDir "bubitunes-windows-$arch.zip"
         Move-Item -LiteralPath $temporaryArchive -Destination $archive -Force
         Write-Host "Package: $archive"
     } finally {

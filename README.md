@@ -1,128 +1,133 @@
-# BubiTunes
+# BubiTunes - PC-88 OPNA Music Player
 
-BubiTunes plays PC-88 YM2608 (OPNA) VGM and VGZ files in a terminal. It uses
-[Bubilator88Core](https://github.com/bubio/Bubilator88Core) for synthesis and
-includes substitute OPNA rhythm samples. It runs without PC-88 BIOS files.
+[![Latest release](https://img.shields.io/github/v/release/bubio/BubiTunes)](https://github.com/bubio/BubiTunes/releases/latest)
+[![License](https://img.shields.io/github/license/bubio/BubiTunes)](LICENSE)
+[![macOS](https://github.com/bubio/BubiTunes/actions/workflows/macos.yml/badge.svg)](https://github.com/bubio/BubiTunes/actions/workflows/macos.yml)
+[![Linux](https://github.com/bubio/BubiTunes/actions/workflows/linux.yml/badge.svg)](https://github.com/bubio/BubiTunes/actions/workflows/linux.yml)
+[![Windows](https://github.com/bubio/BubiTunes/actions/workflows/windows.yml/badge.svg)](https://github.com/bubio/BubiTunes/actions/workflows/windows.yml)
 
-BubiTunes is distributed as a standalone CLI for Apple Silicon Macs running
-macOS 15 or later. The substitute rhythm samples are embedded in the
-executable, so extract the release archive and run the CLI directly.
+BubiTunes is a terminal music player for PC-88 VGM and VGZ files recorded from
+a single YM2608 (OPNA). It uses [Bubilator88Core](https://github.com/bubio/Bubilator88Core)
+for sound synthesis. Substitute rhythm samples are built into the executable,
+and playback requires no PC-88 BIOS files.
 
-For Windows x64, extract `bubitunes.exe` from
-`BubiTunes-windows-x64-SingleFile.zip` and run it from a terminal. The EXE
-includes the Swift runtime and substitute rhythm samples.
+## Features
+
+- Play one or more files directly or browse a library indexed by artist and game.
+- Search Japanese and English GD3 tags, save favorites, and revisit recently played tracks.
+- Shuffle or repeat a queue and resume it from the saved position.
+- View a twelve-band spectrum, stereo peak meters, and YM2608 register activity for FM, SSG, rhythm, and ADPCM.
+
+## Download
+
+Download the package for your platform from [GitHub Releases](https://github.com/bubio/BubiTunes/releases).
+The version comes from the tag, so a tag of `v1.2.3` uses `1.2.3` in each filename.
+
+| Platform | Release package | CI artifact |
+| --- | --- | --- |
+| [macOS 15+ (Apple Silicon)](https://github.com/bubio/BubiTunes/actions/workflows/macos.yml) | `bubitunes-<version>-macos-arm64.tar.gz` | `bubitunes-macos-arm64` |
+| [Linux (x64, built on Ubuntu 22.04)](https://github.com/bubio/BubiTunes/actions/workflows/linux.yml) | `bubitunes-<version>-linux-x64.tar.gz` | `bubitunes-linux-x64` |
+| [Windows (x64)](https://github.com/bubio/BubiTunes/actions/workflows/windows.yml) | `bubitunes-<version>-windows-x64.zip` | `bubitunes-windows-x64` |
+
+CI artifacts are available on successful workflow runs on `main`. The Linux
+and Windows packages include the Swift runtime. The Windows ZIP contains only
+`bubitunes.exe`.
+
+## Usage
+
+Extract the package and run the executable from a terminal.
 
 ```sh
 ./bubitunes "track 1.vgz" "track 2.vgm"
+./bubitunes "$HOME/Music/PC-88"
 ```
 
-Press Space to pause or resume, Left/Right or p/n to change tracks, +/− to adjust
-volume, and q to quit. Files with a loop play that section one additional time.
+On Windows, use `.\bubitunes.exe` in PowerShell.
 
-Run `bubitunes` with no arguments to open the library, or give it a music folder
-to register and index it. The library scans `.vgm` and `.vgz` files recursively
-and searches both Japanese and English GD3 fields. The library opens with
-three panes: Artist and Game on top, with a full-width Song list below.
-Game uses the GD3 game name. Select
-with Up/Down, move among panes with Left/Right or Tab/Shift-Tab, and press
-Enter in Song to replace the queue with the filtered Song list and start at
-the selected song. The queue keeps the displayed order, including tracks
-before the starting song. Browsing stays open, and changing filters does not
-change the queue until you start playback from the new list. On a narrow
-terminal, only the focused pane is shown.
-Choose All artists or All games to remove that filter. Missing tags appear
-under Unknown artist or Unknown game.
+```powershell
+.\bubitunes.exe "track 1.vgz"
+```
 
-Press `g` to cycle through columns, game groups, artist groups, and a flat
-track list. Use `/browse columns` to return to columns directly.
+Passing a folder registers it and scans recursively for `.vgm` and `.vgz` files.
+Run BubiTunes without arguments to open the library and restore the saved
+queue. The current track loads paused at its saved position. Passing track
+files starts a new queue.
 
 | Key | Action |
 | --- | --- |
-| `l`, `d`, `r` | Open library, register a folder, rescan registered folders |
-| `←`, `→`, `Tab`, `g` | Move between library panes or switch browser layout |
-| `/`, `↑`, `↓` | Filter the current view or enter a slash command |
-| `Enter`, `a` | Play the displayed list from the selected song, or append just the selected song |
-| `Tab` | Add the search selection to the queue while the search prompt is open |
+| Space, `←` / `→` or `p` / `n` | Pause or resume, or go to the previous or next track in the player |
+| `+` / `-`, `q` | Adjust volume or quit |
+| `l`, `d`, `r` | Open the library, register a folder, or rescan registered folders |
+| `↑` / `↓`, `←` / `→`, `Tab` / `Shift+Tab` | Select an entry or move between library panes |
+| `g` | Cycle through columns, game groups, artist groups, and a flat track list |
+| `Enter`, `a` | Play the displayed list from the selected track, or append the selected track |
 | `f`, `F`, `h` | Toggle a favorite, open favorites, or open recently played tracks |
+| `P`, `S`, `R` | Switch between queue and browser, shuffle the current list, or cycle through repeat modes |
 
-Press `/` to see command suggestions. Type to narrow the list, select with
-Up/Down, and use Tab to complete or Enter to run. Type `/help` for shortcuts,
-including `/play`, `/pause`,
-`/next`, `/restart`, `/volume 35`, `/history`, and `/spectrum off`.
-Ordinary text after `/` still filters the active list. Use `/search <text>`
-when the search starts with a command name. `/browse artists` switches grouping
-directly.
+The default library view shows Artist and Game above Song. Choose **All artists**
+or **All games** to clear the corresponding filter. Untagged entries appear
+under **Unknown artist** or **Unknown game**. When a game is selected, tracks
+appear in natural filename order (01, 02, 10) with their GD3 titles. On narrow
+terminals, the browser shows the focused pane.
 
-The spectrum shows twelve low-to-high bands from the played stereo PCM. The
-bands automatically scale to recent peaks before volume is applied. The
-separate left and right peak meters follow playback volume. The YM2608 indicators pulse for recent
-register writes in FM, SSG, rhythm, and ADPCM. They indicate command activity,
-which can differ from a sustained note's audible output.
+Press `/` to filter the active list or bring up slash command suggestions.
+Use the arrow keys to select a suggestion, `Tab` to complete it, and `Enter`
+to run it. When filtering, `Tab` appends the selected result to the queue.
+Use `/search <text>` for searches that begin with a command name. Run `/help`
+to see all commands.
 
-Uppercase `P` switches between the playback queue and the browser while
-preserving the current track, position, and queue. Use `/play list` to replace
-the queue with the open collection and start from the first track. Use
-`/play library` or `/play favorites` from any view. For one game, open it and
-use `/play game`, or provide its GD3 name with `/play game <game name>`.
-In columns, `/play list` and `S` use the songs shown after artist and game
-filtering. With a game selected, Song and `/play list` follow natural filename
-order (01, 02, 10) and display the GD3 titles. Enter uses the displayed order
-in the library, search results, favorites, and history.
+- `/browse columns`, `/browse games`, `/browse artists`, and `/browse tracks` select a library layout.
+- `/play list` plays the displayed collection from the first track. Use `/play library`,
+  `/play favorites`, or `/play game <game name>` to start another collection.
+- `/shuffle library`, `/shuffle favorites`, and `/shuffle game <game name>`
+  shuffle a collection. The order stays fixed when the queue repeats.
+- `/repeat off`, `/repeat one`, and `/repeat all` control queue repeat. A VGM's
+  embedded loop plays one additional time before the queue repeat mode takes effect.
+- `/volume 35` sets the volume, and `/spectrum off` hides the spectrum.
 
-Press uppercase `S` to shuffle the open list, or the entire current queue
-from the player view. You can also use `/shuffle favorites`, `/shuffle library`,
-or `/shuffle game <game name>`. The shuffled order stays fixed while the queue
-repeats.
+The player saves registered folders, favorites, history, and playback state in
+`BubiTunes/library.json` under the platform's application support directory.
+On macOS, this is `~/Library/Application Support/BubiTunes/library.json`.
+Set `BUBITUNES_LIBRARY_DIR` to use another directory.
 
-Uppercase `R` cycles through Repeat off, Repeat one, and Repeat queue.
-Use `/repeat off`, `/repeat one`, or `/repeat all` to choose directly. These
-modes apply after a VGM finishes its own playback, including its file loop.
+## Building
 
-Registered folders, favorites, and history are stored in
-`~/Library/Application Support/BubiTunes/library.json`. On exit, BubiTunes also
-saves the volume, repeat mode, spectrum visibility, queue order, and playback
-position. When started without explicit track files, it restores the queue and
-loads the current track paused at the saved position. Press Space to resume.
-Supplying track files starts a new queue. Use `BUBITUNES_LIBRARY_DIR` to specify
-a different storage directory.
+CI uses Swift 6.4.3. On Linux, install zlib development headers and pkg-config
+before building. On Ubuntu, run `sudo apt-get install zlib1g-dev pkg-config`.
 
-The initial player accepts files for a single YM2608. YM2203 playback is planned
-for a later Core release. For local development against a sibling Core clone:
+| Platform | Build, test, and package |
+| --- | --- |
+| macOS | `bash scripts/build-macos.sh` |
+| Linux | `bash scripts/build-linux.sh` |
+| Windows (PowerShell) | `./scripts/build-windows.ps1` |
+
+The scripts place the package in `dist/` using the filename
+`bubitunes-<platform>-<arch>.<ext>`. They run the release test suite and check
+that the packaged executable starts with `--help`. The macOS executable is
+ad hoc signed.
+
+SwiftPM uses the published Bubilator88Core dependency by default. To develop
+against a sibling checkout, set `BUBITUNES_CORE_DIR` when running SwiftPM or
+the packaging scripts.
 
 ```sh
 BUBITUNES_CORE_DIR=../Bubilator88Core swift test
 BUBITUNES_CORE_DIR=../Bubilator88Core swift run bubitunes track.vgz
 ```
 
-To build the same Release package as CI, install Swift 6.4.3 and run the
-script for your platform from the project directory:
+On macOS, run the interactive smoke test against a built executable in a
+session with audio output.
 
-| Platform | Command |
-| --- | --- |
-| macOS | `bash scripts/build-macos.sh` |
-| Linux | `bash scripts/build-linux.sh` |
-| Windows (PowerShell) | `./scripts/build-windows.ps1` |
+```sh
+python3 scripts/smoke-test.py "$(swift build --show-bin-path)/bubitunes"
+```
 
-Each script builds `bubitunes`, runs the Release tests, checks `--help`, and
-packages the executable under `dist/`. The rhythm samples are embedded in the
-executable. The Windows ZIP contains only `bubitunes.exe`, with the Swift
-runtime statically linked. The macOS and Linux archives also include the
-notices. Linux links the Swift standard library statically, and the macOS
-executable is ad-hoc signed. The package targets the current platform and
-architecture. Linux needs zlib development
-headers and pkg-config (`sudo apt-get install zlib1g-dev pkg-config`) to build;
-running the packaged Linux binary does not require a Swift installation.
-`BUBITUNES_CORE_DIR` also works with these scripts; leave it unset to use the
-published Core dependency as CI does.
+## License and credits
 
-CI has separate Linux, macOS and Windows workflows. Pull requests and pushes
-to `main` run only when build inputs, tests, packaged assets, or that platform's
-build script or workflow change. Documentation-only changes do not start builds.
-Successful `main` builds upload platform archives as Actions artifacts.
-Windows CI also uploads its ZIP for pull requests and manual runs, then checks
-that the EXE starts on a separate runner without Swift. A `v*` tag also builds
-and publishes the macOS release.
+BubiTunes is distributed under the [GNU General Public License v2](LICENSE).
+OPNA synthesis includes work based on cisc's fmgen. The embedded substitute
+rhythm samples come from Bubilator88.
 
-BubiTunes is distributed under GPL v2. The OPNA synthesis includes work based
-on cisc's fmgen. See [FMGEN-NOTICE.txt](FMGEN-NOTICE.txt). The six substitute
-rhythm WAV files originate from the Bubilator88 project.
+- [fmgen notice](FMGEN-NOTICE.txt)
+- [miniaudio notice](https://github.com/bubio/BubiTunes/blob/main/Sources/CMinAudio/NOTICE.txt)
+- [zlib notice](https://github.com/bubio/BubiTunes/blob/main/Sources/CZlibVendored/NOTICE.txt)
